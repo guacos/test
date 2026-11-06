@@ -1,0 +1,35 @@
+{
+  "expo": {
+    "name": "Bauleitung",
+    "slug": "bauleitung-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#0B2540",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "package": "de.bauleitung.app"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "output": "single",
+      "bundler": "metro",
+      "name": "Bauleitung",
+      "lang": "de"
+    },
+    "scheme": "bauleitung",
+    "plugins": [
+      "expo-router",
+      "expo-sqlite"
+    ]
+  }
+}
