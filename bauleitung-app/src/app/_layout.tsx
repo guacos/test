@@ -1,5 +1,6 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import NetInfo from '@react-native-community/netinfo';
 import { useEffect } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 import { useApp } from '../state/useApp';
@@ -13,6 +14,16 @@ export default function RootLayout() {
   useEffect(() => {
     init();
   }, [init]);
+
+  // Sobald Netz da ist: ausstehende KI-Ausformulierungen nachholen
+  useEffect(() => {
+    if (!bereit) return;
+    const nachholen = () => useApp.getState().nachholen().catch(() => {});
+    nachholen();
+    return NetInfo.addEventListener((s) => {
+      if (s.isConnected) nachholen();
+    });
+  }, [bereit]);
 
   if (!bereit) {
     return (
@@ -45,6 +56,9 @@ export default function RootLayout() {
         <Stack.Screen name="projekte/index" options={{ title: 'Projekte' }} />
         <Stack.Screen name="projekte/neu" options={{ title: 'Neues Projekt' }} />
         <Stack.Screen name="projekte/[id]" options={{ title: 'Projekt bearbeiten' }} />
+        <Stack.Screen name="board/[id]" options={{ title: 'Eintrag bearbeiten' }} />
+        <Stack.Screen name="jourfixe/punkt/[id]" options={{ title: 'Punkt bearbeiten' }} />
+        <Stack.Screen name="fotos/[id]" options={{ title: 'Foto' }} />
       </Stack>
     </>
   );

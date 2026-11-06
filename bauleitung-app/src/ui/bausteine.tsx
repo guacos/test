@@ -227,3 +227,48 @@ const s = StyleSheet.create({
   },
   leerText: { fontSize: groesse.schrift, color: farbe.textLeise, textAlign: 'center' },
 });
+
+/** Auswahl-Chip (z. B. Wochentag, Rubrik). */
+export function Chip({
+  titel,
+  aktiv,
+  onPress,
+  testID,
+}: {
+  titel: string;
+  aktiv?: boolean;
+  onPress?: () => void;
+  testID?: string;
+}) {
+  return (
+    <Pressable
+      testID={testID}
+      accessibilityRole={onPress ? 'button' : 'text'}
+      accessibilityState={{ selected: !!aktiv }}
+      disabled={!onPress}
+      onPress={onPress}
+      style={({ pressed }) => [c.chip, aktiv && c.aktiv, pressed && { opacity: 0.7 }]}
+    >
+      <Text style={[c.text, aktiv && { color: farbe.weiss }]}>{titel}</Text>
+    </Pressable>
+  );
+}
+
+export function ChipReihe({ children }: { children: ReactNode }) {
+  return <View style={c.reihe}>{children}</View>;
+}
+
+const c = StyleSheet.create({
+  reihe: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chip: {
+    minHeight: 44,
+    paddingHorizontal: 14,
+    borderRadius: 22,
+    borderWidth: 2,
+    borderColor: farbe.linie,
+    justifyContent: 'center',
+    backgroundColor: farbe.hintergrund,
+  },
+  aktiv: { backgroundColor: farbe.navy, borderColor: farbe.navy },
+  text: { fontSize: groesse.schriftKlein + 1, fontWeight: '700', color: farbe.text },
+});

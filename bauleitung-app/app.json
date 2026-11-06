@@ -29,7 +29,21 @@
     "scheme": "bauleitung",
     "plugins": [
       "expo-router",
-      "expo-sqlite"
+      "expo-sqlite",
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Die App nutzt die Kamera für Baustellenfotos.",
+          "photosPermission": "Die App liest Fotos aus deiner Galerie für die Fotodokumentation."
+        }
+      ],
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Das Mikrofon wird für das Diktat genutzt. Die Erkennung läuft auf dem Gerät.",
+          "speechRecognitionPermission": "Für das Diktat wird die Spracherkennung genutzt."
+        }
+      ]
     ]
   }
 }

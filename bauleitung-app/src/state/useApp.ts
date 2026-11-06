@@ -5,10 +5,13 @@ import type { Projekt, ProjektDaten } from '../domain/types';
 import { Repo } from '../data/repo';
 import type { RecordStore } from '../data/RecordStore';
 import { erzeugeStore } from '../data/store';
+import type { KiEinstellungen } from '../ki/client';
+import { kiNachholen } from '../dienste/kiNachholen';
 
 const META_AKTIV = 'aktivesProjekt';
 const META_AUTOR = 'autor';
 const META_GERAET = 'geraet';
+const META_KI = 'kiBackend';
 
 interface AppState {
   bereit: boolean;
@@ -17,12 +20,23 @@ interface AppState {
   aktivesProjektId: string | null;
   /** Name, der als Ersteller an jedem Datensatz steht. Später: Name des Microsoft-Kontos. */
   autor: string;
+  /** Verbindung zum KI-Backend (nur genutzt in Projekten mit "KI erlaubt") */
+  kiEinst: KiEinstellungen | null;
+  /** Wird bei jeder Datenänderung erhöht → Bildschirme laden neu */
+  datenStand: number;
+  /** Im Board angezeigte KW (z. B. "2026-W40"), null = aktuelle Woche */
+  boardKw: string | null;
 
   init: (store?: RecordStore) => Promise<void>;
   projektSpeichern: (daten: ProjektDaten, id?: string) => Promise<Projekt>;
   projektLoeschen: (id: string) => Promise<void>;
   projektWaehlen: (id: string) => Promise<void>;
   autorSetzen: (name: string) => Promise<void>;
+  kiEinstSetzen: (e: KiEinstellungen | null) => Promise<void>;
+  /** Nach Änderungen aufrufen, damit die Anzeige neu lädt */
+  geaendert: () => void;
+  /** Ausstehende KI-Ausformulierungen nachholen (wenn Netz da ist) */
+  nachholen: () => Promise<void>;
 }
 
 let repo: Repo | null = null;
@@ -39,6 +53,9 @@ export const useApp = create<AppState>((set, get) => ({
   projekte: [],
   aktivesProjektId: null,
   autor: '',
+  kiEinst: null,
+  datenStand: 0,
+  boardKw: null,
 
   async init(store) {
     if (get().bereit) return;
@@ -55,7 +72,9 @@ export const useApp = create<AppState>((set, get) => ({
       const projekte = sortiereProjekte(await repo.alle<Projekt>('projekt'));
       let aktiv = (await s.holeMeta(META_AKTIV)) ?? null;
       if (!projekte.some((p) => p.id === aktiv)) aktiv = projekte[0]?.id ?? null;
-      set({ bereit: true, projekte, aktivesProjektId: aktiv, autor });
+      const kiRoh = await s.holeMeta(META_KI);
+      const kiEinst = kiRoh ? (JSON.parse(kiRoh) as KiEinstellungen) : null;
+      set({ bereit: true, projekte, aktivesProjektId: aktiv, autor, kiEinst });
     } catch (e) {
       set({ fehler: e instanceof Error ? e.message : String(e) });
     }
@@ -95,6 +114,22 @@ export const useApp = create<AppState>((set, get) => ({
     if (!n) return;
     set({ autor: n });
     await holeRepo().setzeMeta(META_AUTOR, n);
+  },
+
+  async kiEinstSetzen(e) {
+    const sauber = e && e.url.trim() ? { url: e.url.trim(), schluessel: e.schluessel.trim() } : null;
+    set({ kiEinst: sauber });
+    await holeRepo().setzeMeta(META_KI, sauber ? JSON.stringify(sauber) : '');
+  },
+
+  geaendert() {
+    set((s) => ({ datenStand: s.datenStand + 1 }));
+  },
+
+  async nachholen() {
+    const { projekte, kiEinst } = get();
+    const n = await kiNachholen({ repo: holeRepo(), projekte, kiEinst, neueId });
+    if (n > 0) get().geaendert();
   },
 }));
 

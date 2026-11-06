@@ -1,0 +1,18 @@
+name = "bauleitung-ki"
+main = "src/index.ts"
+compatibility_date = "2026-10-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Keine Anfrage-Inhalte protokollieren
+[observability]
+enabled = false
+
+[vars]
+# Modellname – hier änderbar, danach "npm run deploy"
+CLAUDE_MODELL = "claude-opus-5-5"
+# Web-Adresse der Mac-Version (für den Browser), mehrere mit Komma trennen
+ERLAUBTE_URSPRUENGE = "http://localhost:8081"
+
+# Geheimnisse NICHT hier eintragen, sondern mit:
+#   npx wrangler secret put ANTHROPIC_API_KEY
+#   npx wrangler secret put APP_SCHLUESSEL
