@@ -2,11 +2,11 @@
  * Datenmodell der App.
  *
  * Jeder Datensatz ist ein eigenständiges Dokument mit Ersteller und
- * Änderungszeit. So kann später jeder Datensatz als eigene kleine Datei
- * in OneDrive liegen (siehe Sync-Konzept in der README).
+ * Änderungszeit. So liegt jeder Datensatz als eigene kleine Datei in
+ * OneDrive (siehe Sync-Konzept in der README).
  */
 
-/** Alle Datensatz-Typen. Phase 2/3 ergänzen hier weitere Typen. */
+/** Alle Datensatz-Typen. */
 export type RecordTyp =
   | 'projekt'
   | 'woche'
@@ -14,7 +14,26 @@ export type RecordTyp =
   | 'foto'
   | 'protokoll'
   | 'protokollpunkt'
-  | 'einstellungen';
+  | 'einstellungen'
+  | 'firma'
+  | 'bautag'
+  | 'mangel'
+  | 'plan'
+  | 'lieferschein';
+
+/** Typen, die je Projekt in OneDrive unter _daten/{typ}/ liegen. */
+export const PROJEKT_TYPEN: RecordTyp[] = [
+  'woche',
+  'board',
+  'foto',
+  'protokoll',
+  'protokollpunkt',
+  'firma',
+  'bautag',
+  'mangel',
+  'plan',
+  'lieferschein',
+];
 
 export interface BaseRecord {
   id: string;
@@ -32,6 +51,11 @@ export interface BaseRecord {
   geloescht: boolean;
 }
 
+/** Felder eines Datensatzes ohne die Verwaltungsfelder. */
+export type Inhalt<T extends BaseRecord> = Omit<T, keyof BaseRecord>;
+
+// ---------- Projekt ----------
+
 export interface Projekt extends BaseRecord {
   typ: 'projekt';
   nr: string;
@@ -40,10 +64,49 @@ export interface Projekt extends BaseRecord {
   adresse: string;
   /** KI-Schalter je Projekt. Standard: AUS. */
   kiErlaubt: boolean;
+  /** Wetter fürs Bautagebuch automatisch abrufen (sendet nur Koordinaten). Standard: AUS. */
+  wetterAuto?: boolean;
+  /** Standort der Baustelle (für das Wetter) */
+  lat?: number | null;
+  lon?: number | null;
 }
 
 /** Felder, die der Nutzer beim Projekt eingibt. */
-export type ProjektDaten = Pick<Projekt, 'nr' | 'name' | 'bauherr' | 'adresse' | 'kiErlaubt'>;
+export type ProjektDaten = Pick<Projekt, 'nr' | 'name' | 'bauherr' | 'adresse' | 'kiErlaubt'> &
+  Partial<Pick<Projekt, 'wetterAuto' | 'lat' | 'lon'>>;
+
+// ---------- Einstellungen (projektübergreifend) ----------
+
+export const STANDARD_GEWERKE = [
+  'Erdarbeiten',
+  'Rohbau',
+  'Estrich',
+  'Trockenbau',
+  'Elektro',
+  'Sanitär',
+  'Heizung/Lüftung',
+  'Gebäudeautomation',
+  'Brandschutz',
+  'Erdleitungen',
+  'Fassade',
+  'Dach',
+  'Maler',
+  'Fliesen',
+  'Bodenbelag',
+  'Baustelleneinrichtung',
+  'Sonstiges',
+];
+
+export const STANDARD_GESCHOSSE = ['EG', '1.OG', 'Halle', 'Außenanlage'];
+
+/** Feste ID: es gibt genau einen Einstellungs-Datensatz. */
+export const EINSTELLUNGEN_ID = 'einstellungen';
+
+export interface Einstellungen extends BaseRecord {
+  typ: 'einstellungen';
+  gewerke: string[];
+  geschosse: string[];
+}
 
 // ---------- Board ----------
 
@@ -61,7 +124,7 @@ export const BEREICHE: Record<Bereich, { label: string; rubriken: readonly strin
 export type KiStatus =
   | 'manuell' // ohne KI erstellt (KI aus im Projekt)
   | 'ausstehend' // KI erlaubt, aber noch nicht erreichbar → wird nachgeholt
-  | 'fertig'; // von der KI ausformuliert
+  | 'fertig'; // von der KI bearbeitet
 
 /** Eine angelegte Kalenderwoche (damit auch leere Wochen erhalten bleiben). */
 export interface Woche extends BaseRecord {
@@ -84,6 +147,13 @@ export interface Pruefkette {
   qualitaet: boolean;
 }
 
+export const PRUEFKETTE: { key: keyof Pruefkette; label: string }[] = [
+  { key: 'vorleistung', label: 'Vorleistung' },
+  { key: 'material', label: 'Material / Lieferschein' },
+  { key: 'planstand', label: 'Planstand' },
+  { key: 'qualitaet', label: 'Qualität nach Ausführung' },
+];
+
 export interface BoardEintrag extends BaseRecord {
   typ: 'board';
   kw: string;
@@ -99,7 +169,7 @@ export interface BoardEintrag extends BaseRecord {
   /** Ursprüngliche Kurzeingabe (für das Nachholen der KI) */
   rohtext: string;
   ki: KiStatus;
-  /** Phase 2: Lieferung als geliefert markiert (durch Lieferschein) */
+  /** Lieferung als geliefert markiert (durch einen Lieferschein oder von Hand) */
   geliefert?: boolean;
 }
 
@@ -110,6 +180,15 @@ export type FotoArt = (typeof FOTO_ARTEN)[number];
 
 /** Woher die KW eines Fotos stammt. */
 export type KwQuelle = 'exif' | 'dateiname' | 'kamera' | 'manuell' | 'unbekannt';
+
+/**
+ * Wohin das Bild in OneDrive gehört:
+ *  fotos        → 02_Fotos/{Jahr}_KW{nn}/        (Fotodokumentation)
+ *  anhang       → 03_Protokolle/Anhaenge/         (Planausschnitte im Jour Fixe)
+ *  lieferschein → 07_Lieferscheine/{Jahr}_KW{nn}/
+ *  plan         → 05_Maengel/_Grundrisse/         (Grundrisse für Mängel-Pins)
+ */
+export type FotoAblage = 'fotos' | 'anhang' | 'lieferschein' | 'plan';
 
 export interface Foto extends BaseRecord {
   typ: 'foto';
@@ -129,8 +208,12 @@ export interface Foto extends BaseRecord {
   tags: string[];
   notiz: string;
   originalName: string | null;
-  /** Dateiname in OneDrive, wird beim Hochladen vergeben */
-  oneDriveName: string | null;
+  /** fehlt = 'fotos' */
+  ablage?: FotoAblage;
+  /** Pfad in OneDrive relativ zum Projektordner; wird beim Hochladen vergeben */
+  oneDrivePfad?: string | null;
+  /** Gewerk/Art stammen von der KI und wurden noch nicht bestätigt */
+  kiVorschlag?: boolean;
   ki: KiStatus;
 }
 
@@ -161,6 +244,8 @@ export interface ProtokollPunkt extends BaseRecord {
   threadId: string;
   /** Protokoll-Nr., in der der Punkt zuerst auftauchte */
   ursprungNr: number;
+  /** Laufende Nr. innerhalb des Ursprungsprotokolls → feste Punkt-Nr. "3.02" */
+  lfdNr?: number;
   thema: string;
   beschreibung: string;
   verantwortlich: string;
@@ -173,5 +258,100 @@ export interface ProtokollPunkt extends BaseRecord {
   /** Sortierung innerhalb des Protokolls */
   reihenfolge: number;
   rohtext: string;
+  ki: KiStatus;
+}
+
+// ---------- Firmen (NU-Adressbuch) ----------
+
+export interface Firma extends BaseRecord {
+  typ: 'firma';
+  name: string;
+  gewerk: string;
+  ansprechpartner: string;
+  telefon: string;
+  email: string;
+  notiz: string;
+}
+
+// ---------- Bautagebuch ----------
+
+export interface Wetter {
+  /** z. B. "Regen", "trocken" */
+  beschreibung: string;
+  tempMin: number | null;
+  tempMax: number | null;
+  /** mm */
+  niederschlag: number | null;
+  /** km/h */
+  windMax: number | null;
+  quelle: 'manuell' | 'dwd';
+}
+
+export interface FirmaAnwesenheit {
+  firmaId: string | null;
+  name: string;
+  anzahl: number;
+}
+
+export interface Bautag extends BaseRecord {
+  typ: 'bautag';
+  /** YYYY-MM-DD, je Projekt nur ein Eintrag pro Tag */
+  datum: string;
+  wetter: Wetter | null;
+  firmen: FirmaAnwesenheit[];
+  notiz: string;
+  fotoIds: string[];
+}
+
+// ---------- Mängel ----------
+
+export interface Plan extends BaseRecord {
+  typ: 'plan';
+  name: string;
+  geschoss: string;
+  /** Bild des Grundrisses (Foto-Datensatz mit ablage 'plan') */
+  fotoId: string;
+}
+
+export interface Mangel extends BaseRecord {
+  typ: 'mangel';
+  /** laufende Nummer im Projekt */
+  nr: number;
+  titel: string;
+  beschreibung: string;
+  firmaId: string | null;
+  firmaName: string;
+  /** Geschoss/Bereich als Text */
+  ort: string;
+  /** YYYY-MM-DD oder '' */
+  frist: string;
+  status: 'offen' | 'erledigt';
+  /** YYYY-MM-DD oder '' */
+  erledigtAm: string;
+  fotoIds: string[];
+  planId: string | null;
+  /** Position im Grundriss, 0..1 von links/oben */
+  pin: { x: number; y: number } | null;
+}
+
+// ---------- Lieferscheine ----------
+
+export interface Lieferschein extends BaseRecord {
+  typ: 'lieferschein';
+  fotoId: string | null;
+  lieferant: string;
+  /** YYYY-MM-DD oder '' */
+  datum: string;
+  nummer: string;
+  material: string;
+  menge: string;
+  firmaId: string | null;
+  firmaName: string;
+  /** Kurzprüfung */
+  mengeOk: boolean | null;
+  schaeden: string;
+  lagerort: string;
+  /** Verknüpfte geplante Lieferung im Board */
+  boardEintragId: string | null;
   ki: KiStatus;
 }

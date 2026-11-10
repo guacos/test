@@ -75,9 +75,27 @@ class SqliteStore implements RecordStore {
     await this.d.runAsync('UPDATE records SET dirty = 0 WHERE id = ? AND version = ?', id, version);
   }
 
+  async holeStatus(id: string) {
+    const row = await this.d.getFirstAsync<{ json: string; dirty: number }>('SELECT json, dirty FROM records WHERE id = ?', id);
+    return row ? { rec: JSON.parse(row.json) as BaseRecord, dirty: row.dirty === 1 } : undefined;
+  }
+
   async holeMeta(key: string) {
     const row = await this.d.getFirstAsync<{ value: string }>('SELECT value FROM meta WHERE key = ?', key);
     return row?.value;
+  }
+
+  async loescheMeta(key: string) {
+    await this.d.runAsync('DELETE FROM meta WHERE key = ?', key);
+  }
+
+  async metaMitPrefix(prefix: string) {
+    // GLOB statt LIKE: Groß-/Kleinschreibung zählt, "_" und "%" sind keine Platzhalter
+    const muster = prefix.replace(/[*?[]/g, '[$&]') + '*';
+    const rows = await this.d.getAllAsync<{ key: string; value: string }>('SELECT key, value FROM meta WHERE key GLOB ?', muster);
+    const r: Record<string, string> = {};
+    for (const row of rows) r[row.key] = row.value;
+    return r;
   }
 
   async setzeMeta(key: string, value: string) {

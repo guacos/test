@@ -1,6 +1,6 @@
 import { neueId as neueIdStandard } from '../lib/id';
 import { geaenderterDatensatz, geloeschterDatensatz, neuerDatensatz } from '../domain/record';
-import type { BaseRecord, RecordTyp } from '../domain/types';
+import type { BaseRecord, Inhalt, RecordTyp } from '../domain/types';
 import type { RecordStore } from './RecordStore';
 
 /**
@@ -8,8 +8,11 @@ import type { RecordStore } from './RecordStore';
  * gespeichert und als "noch nicht abgeglichen" markiert.
  */
 export class Repo {
+  /** Wird nach jeder lokalen Änderung aufgerufen (stößt den Abgleich an). */
+  beiAenderung: (() => void) | null = null;
+
   constructor(
-    private store: RecordStore,
+    readonly store: RecordStore,
     private autor: () => string,
     private neueId: () => string = neueIdStandard,
   ) {}
@@ -23,24 +26,41 @@ export class Repo {
     return this.store.hole<T>(id);
   }
 
-  async neu<T extends BaseRecord>(typ: T['typ'], projektId: string | null, felder: Omit<T, keyof BaseRecord>): Promise<T> {
-    const id = this.neueId();
+  /** Datensatz holen, gelöschte gelten als nicht vorhanden. */
+  async holeAktiv<T extends BaseRecord>(id: string | null | undefined): Promise<T | undefined> {
+    if (!id) return undefined;
+    const r = await this.store.hole<T>(id);
+    return r && !r.geloescht ? r : undefined;
+  }
+
+  async neu<T extends BaseRecord>(typ: T['typ'], projektId: string | null, felder: Inhalt<T>, festeId?: string): Promise<T> {
+    const id = festeId ?? this.neueId();
     // Ein Projekt gehört zu sich selbst.
     const pid = typ === 'projekt' ? id : projektId;
     const rec = neuerDatensatz<T>(typ, pid, felder, this.autor(), id);
     await this.store.speichere(rec, true);
+    this.beiAenderung?.();
     return rec;
   }
 
-  async aendere<T extends BaseRecord>(alt: T, aenderungen: Partial<Omit<T, keyof BaseRecord>>): Promise<T> {
+  async aendere<T extends BaseRecord>(alt: T, aenderungen: Partial<Inhalt<T>>): Promise<T> {
     const rec = geaenderterDatensatz(alt, aenderungen, this.autor());
     await this.store.speichere(rec, true);
+    this.beiAenderung?.();
     return rec;
+  }
+
+  /** Wie aendere, liest aber vorher den aktuellen Stand (gegen veraltete Kopien in der Oberfläche). */
+  async aendereAktuell<T extends BaseRecord>(id: string, aenderung: (akt: T) => Partial<Inhalt<T>>): Promise<T | undefined> {
+    const akt = await this.holeAktiv<T>(id);
+    if (!akt) return undefined;
+    return this.aendere(akt, aenderung(akt));
   }
 
   async loesche<T extends BaseRecord>(alt: T): Promise<T> {
     const rec = geloeschterDatensatz(alt, this.autor());
     await this.store.speichere(rec, true);
+    this.beiAenderung?.();
     return rec;
   }
 

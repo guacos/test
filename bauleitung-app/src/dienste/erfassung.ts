@@ -3,7 +3,7 @@
  * Funktioniert ohne Netz. Mit KI (nur wenn im Projekt erlaubt) wird ausformuliert;
  * ist die KI nicht erreichbar, greift die Stichwortzuordnung und die KI wird später nachgeholt.
  */
-import { isoDatum, isoKw, kwSchluessel, kwText, ausSchluessel, kwTextAusSchluessel } from '../domain/kw';
+import { isoKw, kwSchluessel, kwText, ausSchluessel, kwTextAusSchluessel } from '../domain/kw';
 import { analysiere, grossAnfang, zielOhneKi, type Ziel } from '../domain/schnellerfassung';
 import { ordneZu } from '../domain/stichwortzuordnung';
 import {
@@ -13,21 +13,14 @@ import {
   type Foto,
   type KiStatus,
   type Projekt,
-  type Protokoll,
-  type ProtokollPunkt,
   type Woche,
 } from '../domain/types';
-import { letztesProtokoll, naechsteProtokollNr, offenerEntwurf, uebernehmePunkte } from '../domain/uebernahme';
 import type { Repo } from '../data/repo';
-import type { FotoZeit } from '../domain/fotoKw';
 import { ki as kiStandard, type KiEinstellungen } from '../ki/client';
+import { fotoAnlegen, type BildDaten } from './fotos';
+import { punktAnlegen, sichereEntwurf } from './jourfixe';
 
-export interface ErfassungBild extends FotoZeit {
-  datei: string;
-  breite: number;
-  hoehe: number;
-  originalName: string | null;
-}
+export type ErfassungBild = BildDaten;
 
 export interface ErfassungKontext {
   repo: Repo;
@@ -102,22 +95,7 @@ export async function erfasse(
   // 2. Foto speichern (ein gemeinsamer Fotobestand für Fotodoku, Board und Jour Fixe)
   let foto: Foto | null = null;
   if (bild) {
-    foto = await ctx.repo.neu<Foto>('foto', pid, {
-      datei: bild.datei,
-      breite: bild.breite,
-      hoehe: bild.hoehe,
-      aufnahme: bild.aufnahme,
-      kw: bild.kw,
-      kwQuelle: bild.quelle,
-      gewerk: null,
-      art: null,
-      geschoss: null,
-      tags: [],
-      notiz: ziel === 'foto' ? a.text : '',
-      originalName: bild.originalName,
-      oneDriveName: null,
-      ki: kiErlaubt ? 'ausstehend' : 'manuell',
-    });
+    foto = await fotoAnlegen(ctx.repo, ctx.projekt, bild, { notiz: ziel === 'foto' ? a.text : '' });
     erstellt.push(foto);
   }
   const fotoIds = foto ? [foto.id] : [];
@@ -128,24 +106,13 @@ export async function erfasse(
   }
 
   if (ziel === 'jourfixe') {
-    const { protokoll, neuAngelegt, uebernommen } = await sichereEntwurf(ctx, heute, erstellt);
-    const punkte = (await ctx.repo.alle<ProtokollPunkt>('protokollpunkt', pid)).filter((p) => p.protokollId === protokoll.id);
-    const punkt = await ctx.repo.neu<ProtokollPunkt>('protokollpunkt', pid, {
-      protokollId: protokoll.id,
-      threadId: ctx.neueId(),
-      ursprungNr: protokoll.nr,
-      thema: jf.thema,
-      beschreibung: jf.beschreibung,
-      verantwortlich: '',
-      frist: '',
-      status: 'offen',
-      fotoIds,
-      planausschnittIds: [],
-      ergaenzungen: [],
-      reihenfolge: punkte.reduce((m, p) => Math.max(m, p.reihenfolge), 0) + 1,
-      rohtext: a.text,
-      ki: kiStatus,
-    });
+    const { protokoll, neuAngelegt, uebernommen } = await sichereEntwurf(ctx.repo, pid, heute, erstellt);
+    const punkt = await punktAnlegen(
+      ctx.repo,
+      protokoll,
+      { thema: jf.thema, beschreibung: jf.beschreibung, rohtext: a.text, ki: kiStatus, fotoIds },
+      ctx.neueId,
+    );
     erstellt.push(punkt);
     const zusatz = neuAngelegt
       ? ` – neu angelegt${uebernommen ? `, ${uebernommen} offene ${uebernommen === 1 ? 'Punkt' : 'Punkte'} übernommen` : ''}`
@@ -179,42 +146,6 @@ export async function erfasse(
   const teile = [kwText(kw, heute), `${BEREICHE[z.bereich].label} / ${z.rubrik}`];
   if (z.wochentag) teile.push(z.wochentag);
   return { ziel: 'board', erstellt, haupt: eintrag, zusammenfassung: teile.join(' · '), hinweis };
-}
-
-/** Offenen Entwurf holen oder neu anlegen (übernimmt die offenen Punkte des letzten Protokolls). */
-async function sichereEntwurf(ctx: ErfassungKontext, heute: Date, erstellt: BaseRecord[]) {
-  const pid = ctx.projekt.id;
-  const protokolle = await ctx.repo.alle<Protokoll>('protokoll', pid);
-  const entwurf = offenerEntwurf(protokolle);
-  if (entwurf) return { protokoll: entwurf, neuAngelegt: false, uebernommen: 0 };
-  return neuesProtokoll(ctx.repo, pid, protokolle, heute, erstellt);
-}
-
-/** Legt ein neues Protokoll an und übernimmt alle offenen Punkte des letzten Protokolls. */
-export async function neuesProtokoll(
-  repo: Repo,
-  pid: string,
-  protokolle: Protokoll[],
-  heute: Date,
-  erstellt: BaseRecord[] = [],
-) {
-  const letztes = letztesProtokoll(protokolle);
-  const protokoll = await repo.neu<Protokoll>('protokoll', pid, {
-    nr: naechsteProtokollNr(protokolle),
-    datum: isoDatum(heute),
-    teilnehmer: '',
-    status: 'entwurf',
-  });
-  erstellt.push(protokoll);
-  let uebernommen = 0;
-  if (letztes) {
-    const altePunkte = (await repo.alle<ProtokollPunkt>('protokollpunkt', pid)).filter((p) => p.protokollId === letztes.id);
-    for (const p of uebernehmePunkte(altePunkte, protokoll.id)) {
-      erstellt.push(await repo.neu<ProtokollPunkt>('protokollpunkt', pid, p));
-      uebernommen++;
-    }
-  }
-  return { protokoll, neuAngelegt: true, uebernommen };
 }
 
 /** Macht eine Erfassung rückgängig (in umgekehrter Reihenfolge). */

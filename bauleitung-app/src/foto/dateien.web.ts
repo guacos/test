@@ -42,3 +42,15 @@ export async function bildBytes(name: string): Promise<Uint8Array> {
   const blob = (await (await oeffne()).get('bilder', name)) as Blob | undefined;
   return blob ? new Uint8Array(await blob.arrayBuffer()) : new Uint8Array();
 }
+
+/** Schreibt Bytes als Datei (z. B. aus OneDrive geladene Fotos, erzeugte PDFs). */
+export async function schreibeDatei(name: string, bytes: Uint8Array, mime = 'image/jpeg'): Promise<void> {
+  await (await oeffne()).put('bilder', new Blob([bytes as BlobPart], { type: mime }), name);
+  const alt = urls.get(name);
+  if (alt) URL.revokeObjectURL(alt);
+  urls.delete(name);
+}
+
+export async function existiertDatei(name: string): Promise<boolean> {
+  return (await (await oeffne()).count('bilder', name)) > 0;
+}

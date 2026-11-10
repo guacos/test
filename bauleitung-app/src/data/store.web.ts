@@ -80,8 +80,27 @@ class IdbStore implements RecordStore {
     await tx.done;
   }
 
+  async holeStatus(id: string) {
+    const z: Zeile | undefined = await this.d.get('records', id);
+    return z ? { rec: z.rec, dirty: z.dirty === 1 } : undefined;
+  }
+
   async holeMeta(key: string) {
     return (await this.d.get('meta', key)) as string | undefined;
+  }
+
+  async loescheMeta(key: string) {
+    await this.d.delete('meta', key);
+  }
+
+  async metaMitPrefix(prefix: string) {
+    const bereich = IDBKeyRange.bound(prefix, prefix + '\uffff');
+    const tx = this.d.transaction('meta');
+    const [keys, werte] = await Promise.all([tx.store.getAllKeys(bereich), tx.store.getAll(bereich)]);
+    await tx.done;
+    const r: Record<string, string> = {};
+    keys.forEach((k, i) => (r[String(k)] = werte[i] as string));
+    return r;
   }
 
   async setzeMeta(key: string, value: string) {

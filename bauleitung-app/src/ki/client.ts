@@ -1,8 +1,8 @@
 /**
- * Verbindung zum eigenen KI-Backend. Es wird nur der Kurztext geschickt –
- * keine Projektdaten, keine Namen aus dem Projekt.
+ * Verbindung zum eigenen KI-Backend. Es wird nur das Nötigste geschickt:
+ * der Kurztext bzw. ein verkleinertes Bild – keine Projektdaten.
  */
-import type { Bereich, Wochentag } from '../domain/types';
+import type { Bereich, FotoArt, Wochentag } from '../domain/types';
 
 export interface KiEinstellungen {
   /** z. B. https://bauleitung-ki.<name>.workers.dev */
@@ -30,9 +30,23 @@ export interface KiErfassung {
   jourfixe: KiJf;
 }
 
+export interface KiFoto {
+  gewerk: string;
+  art: FotoArt;
+}
+
+export interface KiLieferschein {
+  lieferant: string;
+  /** YYYY-MM-DD oder '' */
+  datum: string;
+  nummer: string;
+  material: string;
+  menge: string;
+}
+
 export class KiNichtVerfuegbar extends Error {}
 
-async function rufe<T>(e: KiEinstellungen | null, pfad: string, body: object, timeoutMs = 20_000): Promise<T> {
+async function rufe<T>(e: KiEinstellungen | null, pfad: string, body: object, timeoutMs = 30_000): Promise<T> {
   if (!e?.url || !e.schluessel) throw new KiNichtVerfuegbar('KI-Backend nicht eingerichtet');
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), timeoutMs);
@@ -61,4 +75,8 @@ export const ki = {
     rufe<KiErfassung>(e, '/v1/erfassung', { text, hatFoto }),
   board: (e: KiEinstellungen | null, text: string) => rufe<KiBoard>(e, '/v1/board', { text }),
   jourfixe: (e: KiEinstellungen | null, text: string) => rufe<KiJf>(e, '/v1/jourfixe', { text }),
+  foto: (e: KiEinstellungen | null, bild: string, gewerke: string[]) => rufe<KiFoto>(e, '/v1/foto', { bild, gewerke }, 60_000),
+  lieferschein: (e: KiEinstellungen | null, bild: string) => rufe<KiLieferschein>(e, '/v1/lieferschein', { bild }, 60_000),
 };
+
+export type Ki = typeof ki;

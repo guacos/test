@@ -19,8 +19,13 @@ export interface RecordStore {
   ungesynct(): Promise<BaseRecord[]>;
   /** Nach erfolgreichem Hochladen: als abgeglichen markieren, falls sich die Version nicht geändert hat. */
   alsSynctMarkieren(id: string, version: number): Promise<void>;
+  /** Datensatz samt Abgleich-Status (für den Sync). */
+  holeStatus(id: string): Promise<{ rec: BaseRecord; dirty: boolean } | undefined>;
   holeMeta(key: string): Promise<string | undefined>;
   setzeMeta(key: string, value: string): Promise<void>;
+  loescheMeta(key: string): Promise<void>;
+  /** Alle Meta-Einträge, deren Schlüssel mit dem Präfix beginnt. */
+  metaMitPrefix(prefix: string): Promise<Record<string, string>>;
 }
 
 /** Einfacher Speicher im Arbeitsspeicher, für Tests. */
@@ -55,11 +60,26 @@ export class MemoryStore implements RecordStore {
     if (e && e.rec.version === version) e.dirty = false;
   }
 
+  async holeStatus(id: string) {
+    const e = this.recs.get(id);
+    return e ? { rec: structuredClone(e.rec), dirty: e.dirty } : undefined;
+  }
+
   async holeMeta(key: string) {
     return this.meta.get(key);
   }
 
   async setzeMeta(key: string, value: string) {
     this.meta.set(key, value);
+  }
+
+  async loescheMeta(key: string) {
+    this.meta.delete(key);
+  }
+
+  async metaMitPrefix(prefix: string) {
+    const r: Record<string, string> = {};
+    for (const [k, v] of this.meta) if (k.startsWith(prefix)) r[k] = v;
+    return r;
   }
 }

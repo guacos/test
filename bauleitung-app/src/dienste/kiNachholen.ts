@@ -1,13 +1,14 @@
 /**
- * Holt die KI-Ausformulierung für Einträge nach, die ohne Netz erfasst wurden
- * (nur in Projekten mit "KI erlaubt"). Was du inzwischen selbst geändert hast,
- * wird nicht überschrieben.
+ * Holt KI-Arbeit nach (nur in Projekten mit "KI erlaubt"):
+ *  - Ausformulierung von Board-Einträgen und Jour-Fixe-Punkten, die ohne Netz erfasst wurden
+ *  - Tag-Vorschläge (Gewerk, Art) für neue Fotos
+ * Was du inzwischen selbst geändert hast, wird nicht überschrieben.
  */
 import { grossAnfang } from '../domain/schnellerfassung';
 import { STANDARD_CHECKPUNKTE } from '../domain/stichwortzuordnung';
-import type { BoardEintrag, Projekt, ProtokollPunkt } from '../domain/types';
+import { FOTO_ARTEN, type BoardEintrag, type Foto, type Projekt, type ProtokollPunkt } from '../domain/types';
 import type { Repo } from '../data/repo';
-import { ki as kiStandard, KiNichtVerfuegbar, type KiEinstellungen } from '../ki/client';
+import { ki as kiStandard, KiNichtVerfuegbar, type Ki, type KiEinstellungen } from '../ki/client';
 
 let laeuft = false;
 
@@ -16,7 +17,10 @@ export async function kiNachholen(opt: {
   projekte: Projekt[];
   kiEinst: KiEinstellungen | null;
   neueId: () => string;
-  ki?: typeof kiStandard;
+  gewerke?: string[];
+  /** Liefert das verkleinerte Bild als Base64; fehlt die Funktion, werden Fotos übersprungen. */
+  bildFuerKi?: (datei: string) => Promise<string>;
+  ki?: Ki;
 }): Promise<number> {
   if (laeuft || !opt.kiEinst?.url) return 0;
   laeuft = true;
@@ -46,6 +50,7 @@ export async function kiNachholen(opt: {
         });
         anzahl++;
       }
+
       const punkte = (await opt.repo.alle<ProtokollPunkt>('protokollpunkt', projekt.id)).filter((p) => p.ki === 'ausstehend');
       for (const p of punkte) {
         const r = await ki.jourfixe(opt.kiEinst, p.rohtext);
@@ -57,6 +62,30 @@ export async function kiNachholen(opt: {
           ki: 'fertig',
         });
         anzahl++;
+      }
+
+      if (opt.bildFuerKi && opt.gewerke?.length) {
+        const fotos = (await opt.repo.alle<Foto>('foto', projekt.id)).filter((f) => f.ki === 'ausstehend');
+        for (const f of fotos) {
+          let bild: string;
+          try {
+            bild = await opt.bildFuerKi(f.datei);
+          } catch {
+            continue; // Bild (noch) nicht auf diesem Gerät
+          }
+          const r = await ki.foto(opt.kiEinst, bild, opt.gewerke);
+          const akt = await opt.repo.hole<Foto>(f.id);
+          if (!akt || akt.geloescht || akt.ki !== 'ausstehend') continue;
+          const gewerk = opt.gewerke.includes(r.gewerk) ? r.gewerk : null;
+          const art = FOTO_ARTEN.includes(r.art) ? r.art : null;
+          const vorschlag = { ...(akt.gewerk ? {} : { gewerk }), ...(akt.art ? {} : { art }) };
+          await opt.repo.aendere<Foto>(akt, {
+            ...vorschlag,
+            kiVorschlag: Object.values(vorschlag).some(Boolean),
+            ki: 'fertig',
+          });
+          anzahl++;
+        }
       }
     }
   } catch (e) {

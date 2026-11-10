@@ -2,7 +2,7 @@ import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 import { fotoZeit, type FotoZeit } from '../domain/fotoKw';
 import { neueId } from '../lib/id';
-import { speichereBild } from './dateien';
+import { bildUri, speichereBild } from './dateien';
 import { exifDatum } from './exif';
 
 /** Längste Bildkante nach dem Verkleinern (Pixel) und JPEG-Qualität. */
@@ -63,4 +63,14 @@ export async function fotosAusGalerie(mehrere = true): Promise<NeuesBild[]> {
   const bilder: NeuesBild[] = [];
   for (const a of r.assets) bilder.push(await verarbeite(a, false));
   return bilder;
+}
+
+/** Verkleinertes Bild (max. 1024 px, ohne EXIF) als Base64 – nur das Nötigste für die KI. */
+export async function kiBild(datei: string): Promise<string> {
+  const uri = await bildUri(datei);
+  if (!uri) throw new Error('Bild nicht vorhanden');
+  const bild = await ImageManipulator.manipulate(uri).resize({ width: 1024 }).renderAsync();
+  const r = await bild.saveAsync({ compress: 0.7, format: SaveFormat.JPEG, base64: true });
+  if (!r.base64) throw new Error('Bild konnte nicht gelesen werden');
+  return r.base64;
 }

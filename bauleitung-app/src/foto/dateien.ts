@@ -29,3 +29,15 @@ export async function loescheBild(name: string): Promise<void> {
 export async function bildBytes(name: string): Promise<Uint8Array> {
   return new File(ordner(), name).bytes();
 }
+
+/** Schreibt Bytes als Datei (z. B. aus OneDrive geladene Fotos, erzeugte PDFs). */
+export async function schreibeDatei(name: string, bytes: Uint8Array, _mime?: string): Promise<void> {
+  const f = new File(ordner(), name);
+  if (f.exists) f.delete();
+  f.create();
+  await f.write(bytes);
+}
+
+export async function existiertDatei(name: string): Promise<boolean> {
+  return new File(ordner(), name).exists;
+}

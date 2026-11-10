@@ -26,6 +26,12 @@ const kiAus: typeof kiTyp = {
   jourfixe: async () => {
     throw new KiNichtVerfuegbar('offline');
   },
+  foto: async () => {
+    throw new KiNichtVerfuegbar('offline');
+  },
+  lieferschein: async () => {
+    throw new KiNichtVerfuegbar('offline');
+  },
 };
 
 describe('Schnellerfassung ohne KI (offline)', () => {
@@ -130,6 +136,8 @@ describe('Schnellerfassung mit KI', () => {
       wochentag: null,
     }),
     jourfixe: async () => ({ thema: 'Estrich 1. OG', beschreibung: 'Der Estrich im 1. OG ist noch nicht fertiggestellt.' }),
+    foto: async () => ({ gewerk: 'Trockenbau', art: 'Detail' }),
+    lieferschein: async () => ({ lieferant: '', datum: '', nummer: '', material: '', menge: '' }),
   };
 
   it('nutzt die KI-Ausformulierung, wenn erlaubt und erreichbar', async () => {
@@ -166,5 +174,36 @@ describe('Schnellerfassung mit KI', () => {
     ]);
     expect(await repo.hole(r2.haupt.id)).toMatchObject({ titel: 'Mein Titel', ki: 'fertig' });
     expect(await repo.hole(r3.haupt.id)).toMatchObject({ thema: 'Estrich 1. OG', ki: 'fertig' });
+  });
+});
+
+describe('KI-Tags für Fotos', () => {
+  const kiFoto: typeof kiTyp = { ...kiAus, foto: async () => ({ gewerk: 'Trockenbau', art: 'Detail' }) };
+  const bild = { datei: 'a.jpg', breite: 10, hoehe: 10, originalName: null, aufnahme: null, kw: '2026-W45', quelle: 'exif' as const };
+
+  it('schlägt Gewerk und Art vor, überschreibt aber keine manuellen Tags', async () => {
+    const { repo, projekt, neueId } = await setup(true);
+    const ctx = { repo, projekt, kiEinst: { url: 'x', schluessel: 'y' }, ki: kiAus, neueId, heute };
+    const r1 = await erfasse(ctx, { text: '', bild });
+    const r2 = await erfasse(ctx, { text: '', bild: { ...bild, datei: 'b.jpg' } });
+    await repo.aendere(r2.haupt as Foto, { gewerk: 'Elektro' });
+    const n = await kiNachholen({
+      repo,
+      projekte: [projekt],
+      kiEinst: ctx.kiEinst,
+      neueId,
+      ki: kiFoto,
+      gewerke: ['Trockenbau', 'Elektro'],
+      bildFuerKi: async () => 'base64',
+    });
+    expect(n).toBe(2);
+    expect(await repo.hole(r1.haupt.id)).toMatchObject({ gewerk: 'Trockenbau', art: 'Detail', kiVorschlag: true, ki: 'fertig' });
+    expect(await repo.hole(r2.haupt.id)).toMatchObject({ gewerk: 'Elektro', art: 'Detail', ki: 'fertig' });
+  });
+
+  it('KI aus im Projekt → Fotos bleiben manuell', async () => {
+    const { repo, projekt, neueId } = await setup(false);
+    const r = await erfasse({ repo, projekt, kiEinst: null, neueId, heute }, { text: '', bild });
+    expect(r.haupt).toMatchObject({ ki: 'manuell', gewerk: null, art: null });
   });
 });

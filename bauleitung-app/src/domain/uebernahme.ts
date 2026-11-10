@@ -1,9 +1,7 @@
 /**
  * Jour Fixe: neues Protokoll anlegen und offene Punkte aus dem letzten Protokoll übernehmen.
  */
-import type { Protokoll, ProtokollPunkt } from './types';
-
-type Inhalt<T> = Omit<T, keyof import('./types').BaseRecord>;
+import type { Inhalt, Protokoll, ProtokollPunkt } from './types';
 
 /** Nächste fortlaufende Protokoll-Nr. */
 export function naechsteProtokollNr(protokolle: Pick<Protokoll, 'nr'>[]): number {
@@ -37,6 +35,7 @@ export function uebernehmePunkte(
       protokollId: neuesProtokollId,
       threadId: p.threadId,
       ursprungNr: p.ursprungNr,
+      lfdNr: p.lfdNr,
       thema: p.thema,
       beschreibung: p.beschreibung,
       verantwortlich: p.verantwortlich,
@@ -49,4 +48,11 @@ export function uebernehmePunkte(
       rohtext: p.rohtext,
       ki: p.ki,
     }));
+}
+
+/** Nächste laufende Nr. für einen neuen Punkt in diesem Protokoll (→ Punkt-Nr. "3.02"). */
+export function naechsteLfdNr(punkteImProtokoll: Pick<ProtokollPunkt, 'ursprungNr' | 'lfdNr'>[], protokollNr: number): number {
+  return (
+    punkteImProtokoll.filter((p) => p.ursprungNr === protokollNr).reduce((m, p) => Math.max(m, p.lfdNr ?? 0), 0) + 1
+  );
 }
