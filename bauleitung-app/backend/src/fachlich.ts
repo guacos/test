@@ -112,6 +112,79 @@ export const ErfassungAntwort = z.object({
 });
 export type ErfassungAntwort = z.output<typeof ErfassungAntwort>;
 
+// ---------- Fotos taggen ----------
+
+export const ARTEN = ['Übersicht', 'Detail'] as const;
+
+export function fotoSystem(gewerke: string[]): string {
+  return (
+    'Du bist Assistent eines Bauleiters und taggst Baustellenfotos. ' +
+    `Wähle GENAU ein Gewerk aus dieser Liste: ${gewerke.join(', ')}. ` +
+    'Wähle zusätzlich "Übersicht" (allgemeine Aufnahme eines Raums oder Bereichs, z. B. gespachtelte Räume) oder ' +
+    '"Detail" (Nahaufnahme eines einzelnen Bauteils, z. B. Revisionsklappe, Anschluss, Leitung). ' +
+    'Beurteile nur, was auf dem Foto zu sehen ist.'
+  );
+}
+
+export function fotoSchema(gewerke: string[]) {
+  return {
+    type: 'object',
+    properties: {
+      gewerk: { type: 'string', enum: gewerke },
+      art: { type: 'string', enum: [...ARTEN] },
+    },
+    required: ['gewerk', 'art'],
+    additionalProperties: false,
+  };
+}
+
+export function fotoPruefung(gewerke: string[]) {
+  return z.object({
+    gewerk: z.string().refine((g) => gewerke.includes(g), 'Gewerk nicht in der Liste'),
+    art: z.enum(ARTEN),
+  });
+}
+
+// ---------- Lieferschein lesen ----------
+
+export const LIEFERSCHEIN_SYSTEM =
+  'Du liest das Foto eines Lieferscheins von einer Baustelle in Deutschland. ' +
+  'Gib Lieferant (Firmenname des Absenders), Datum des Lieferscheins im Format JJJJ-MM-TT, ' +
+  'Lieferschein-Nummer, Material (kurze Aufzählung der Positionen) und Menge (mit Einheit) zurück. ' +
+  'Was nicht eindeutig lesbar ist, lässt du als leeren Text. Erfinde nichts und rate nicht.';
+
+const lieferscheinSchemaJson = {
+  type: 'object',
+  properties: {
+    lieferant: { type: 'string' },
+    datum: { type: 'string' },
+    nummer: { type: 'string' },
+    material: { type: 'string' },
+    menge: { type: 'string' },
+  },
+  required: ['lieferant', 'datum', 'nummer', 'material', 'menge'],
+  additionalProperties: false,
+} as const;
+
+export const LieferscheinAntwort = z
+  .object({
+    lieferant: z.string(),
+    datum: z.string(),
+    nummer: z.string(),
+    material: z.string(),
+    menge: z.string(),
+  })
+  .transform((a) => ({
+    lieferant: a.lieferant.trim(),
+    // nur ein echtes Datum durchlassen
+    datum: /^\d{4}-\d{2}-\d{2}$/.test(a.datum.trim()) ? a.datum.trim() : '',
+    nummer: a.nummer.trim(),
+    material: a.material.trim(),
+    menge: a.menge.trim(),
+  }));
+
+export const LIEFERSCHEIN = { system: LIEFERSCHEIN_SYSTEM, schema: lieferscheinSchemaJson, pruefung: LieferscheinAntwort };
+
 export const AUFGABEN = {
   board: { system: BOARD_SYSTEM, schema: boardSchemaJson, pruefung: BoardAntwort },
   jourfixe: { system: JF_SYSTEM, schema: jfSchemaJson, pruefung: JfAntwort },
@@ -124,3 +197,17 @@ export const Anfrage = z.object({
   text: z.string().trim().min(1).max(2000),
   hatFoto: z.boolean().optional(),
 });
+
+/** Verkleinertes JPEG als Base64 (höchstens ca. 3 MB). */
+const Bild = z
+  .string()
+  .min(100)
+  .max(4_000_000)
+  .regex(/^[A-Za-z0-9+/=]+$/);
+
+export const FotoAnfrage = z.object({
+  bild: Bild,
+  gewerke: z.array(z.string().trim().min(1).max(60)).min(1).max(80),
+});
+
+export const LieferscheinAnfrage = z.object({ bild: Bild });

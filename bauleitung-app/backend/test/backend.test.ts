@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { erstelleApp, gleich } from '../src/app';
-import { KiFehler, pruefeAntwort, type KiAufruf } from '../src/ki';
+import { fotoPruefung, LIEFERSCHEIN } from '../src/fachlich';
+import { KiFehler, pruefe, pruefeAntwort, type Ki } from '../src/ki';
 
 const umgebung = { APP_SCHLUESSEL: 'geheim', ERLAUBTE_URSPRUENGE: 'http://localhost:8081' };
 
@@ -45,13 +46,35 @@ describe('Antwort prüfen', () => {
   });
 });
 
+describe('Antwort prüfen: Foto und Lieferschein', () => {
+  it('Gewerk muss aus der übergebenen Liste stammen', () => {
+    const p = fotoPruefung(['Trockenbau', 'Elektro']);
+    expect(pruefe(p, '{"gewerk":"Elektro","art":"Übersicht"}')).toEqual({ gewerk: 'Elektro', art: 'Übersicht' });
+    expect(() => pruefe(p, '{"gewerk":"Zauberei","art":"Übersicht"}')).toThrow(KiFehler);
+    expect(() => pruefe(p, '{"gewerk":"Elektro","art":"Panorama"}')).toThrow(KiFehler);
+  });
+
+  it('Lieferschein: nur ein echtes Datum wird durchgelassen', () => {
+    const roh = { lieferant: ' Baustoff Nord ', datum: '04.11.2026', nummer: 'LS-1', material: 'GK', menge: '10' };
+    expect(pruefe(LIEFERSCHEIN.pruefung, JSON.stringify(roh))).toMatchObject({ lieferant: 'Baustoff Nord', datum: '' });
+    expect(pruefe(LIEFERSCHEIN.pruefung, JSON.stringify({ ...roh, datum: '2026-11-04' }))).toMatchObject({ datum: '2026-11-04' });
+  });
+});
+
 describe('HTTP-Schnittstelle', () => {
-  const ki: KiAufruf = async (aufgabe, text) =>
-    aufgabe === 'jourfixe' ? { thema: 'Estrich 1.OG', beschreibung: text } : { ok: aufgabe };
+  const ki: Ki = {
+    text: async (aufgabe, text) => (aufgabe === 'jourfixe' ? { thema: 'Estrich 1.OG', beschreibung: text } : { ok: aufgabe }),
+    foto: async (_bild, gewerke) => ({ gewerk: gewerke[0], art: 'Detail' }),
+    lieferschein: async () => ({ lieferant: 'Baustoff Nord', datum: '2026-11-04', nummer: 'LS-1', material: 'GK', menge: '10 St' }),
+  };
+  const fehlerKi = (f: () => never): Ki => ({ text: async () => f(), foto: async () => f(), lieferschein: async () => f() });
 
   it('ohne richtigen Schlüssel: 401, die KI wird nicht aufgerufen', async () => {
     let aufgerufen = false;
-    const app = erstelleApp(umgebung, async () => ((aufgerufen = true), {}));
+    const app = erstelleApp(umgebung, fehlerKi(() => {
+      aufgerufen = true;
+      throw new Error('darf nicht aufgerufen werden');
+    }));
     const r = await app.fetch(anfrage('/v1/board', { text: 'x' }, 'falsch'));
     expect(r.status).toBe(401);
     expect(aufgerufen).toBe(false);
@@ -69,11 +92,24 @@ describe('HTTP-Schnittstelle', () => {
   });
 
   it('KI-Fehler wird mit Status weitergegeben', async () => {
-    const app = erstelleApp(umgebung, async () => {
+    const app = erstelleApp(umgebung, fehlerKi(() => {
       throw new KiFehler('KI hat die Anfrage abgelehnt', 422);
-    });
+    }));
     const r = await app.fetch(anfrage('/v1/board', { text: 'x' }));
     expect(r.status).toBe(422);
+  });
+
+  it('Foto taggen und Lieferschein lesen', async () => {
+    const bild = 'A'.repeat(200);
+    const app = erstelleApp(umgebung, ki);
+    const f = await app.fetch(anfrage('/v1/foto', { bild, gewerke: ['Trockenbau', 'Elektro'] }));
+    expect(await f.json()).toEqual({ gewerk: 'Trockenbau', art: 'Detail' });
+    const l = await app.fetch(anfrage('/v1/lieferschein', { bild }));
+    expect((await l.json()) as object).toMatchObject({ lieferant: 'Baustoff Nord', nummer: 'LS-1' });
+    // ungültige Eingaben
+    expect((await app.fetch(anfrage('/v1/foto', { bild, gewerke: [] }))).status).toBe(400);
+    expect((await app.fetch(anfrage('/v1/foto', { bild: 'kein base64 !!', gewerke: ['A'] }))).status).toBe(400);
+    expect((await app.fetch(anfrage('/v1/lieferschein', {}))).status).toBe(400);
   });
 
   it('Schlüsselvergleich', () => {

@@ -1,5 +1,5 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import type { ComponentProps, ReactNode } from 'react';
+import { Children, useState, type ComponentProps, type ReactNode } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -496,6 +496,27 @@ export function Kennzahl({
   );
 }
 
+/**
+ * Raster mit gleich breiten Kacheln: Anzahl der Spalten richtet sich nach der Breite.
+ * Die letzte Zeile wird nicht gestreckt.
+ */
+export function Raster({ children, minBreite = 150, abstand = 10 }: { children: ReactNode; minBreite?: number; abstand?: number }) {
+  const [breite, setBreite] = useState(0);
+  const spalten = breite ? Math.max(2, Math.floor((breite + abstand) / (minBreite + abstand))) : 2;
+  const kachel = breite ? Math.floor((breite - abstand * (spalten - 1)) / spalten) : 0;
+  return (
+    <View onLayout={(e) => setBreite(e.nativeEvent.layout.width)} style={{ flexDirection: 'row', flexWrap: 'wrap', gap: abstand }}>
+      {kachel
+        ? Children.toArray(children).map((kind, i) => (
+            <View key={i} style={{ width: kachel }}>
+              {kind}
+            </View>
+          ))
+        : null}
+    </View>
+  );
+}
+
 export function Trenner() {
   return <View style={{ height: 1, backgroundColor: farbe.linieLeise }} />;
 }
@@ -657,8 +678,7 @@ const s = StyleSheet.create({
   },
   zaehlerWert: { minWidth: 40, textAlign: 'center', fontSize: 24, fontWeight: '800', color: farbe.text },
   kennzahl: {
-    flexGrow: 1,
-    flexBasis: 150,
+    minHeight: 136,
     backgroundColor: farbe.karte,
     borderRadius: groesse.radius,
     borderWidth: 1,

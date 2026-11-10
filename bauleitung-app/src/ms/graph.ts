@@ -28,6 +28,8 @@ export class Graph {
   constructor(
     private token: () => Promise<string | null>,
     private basis: string = GRAPH_BASIS,
+    /** Nur für Tests austauschbar */
+    private holen: typeof fetch = (url, init) => fetch(url, init),
   ) {}
 
   /** Führt eine Anfrage aus. Wiederholt bei Überlastung (429/503/504) bis zu dreimal. */
@@ -52,7 +54,7 @@ export class Graph {
       const timer = setTimeout(() => ctrl.abort(), opt.timeoutMs ?? 60_000);
       let r: Response;
       try {
-        r = await fetch(url, { method: methode, headers, body, signal: ctrl.signal });
+        r = await this.holen(url, { method: methode, headers, body, signal: ctrl.signal });
       } catch {
         throw new GraphFehler('Keine Verbindung zu Microsoft', 0, 'netz');
       } finally {

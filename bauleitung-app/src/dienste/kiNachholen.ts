@@ -6,7 +6,8 @@
  */
 import { grossAnfang } from '../domain/schnellerfassung';
 import { STANDARD_CHECKPUNKTE } from '../domain/stichwortzuordnung';
-import { FOTO_ARTEN, type BoardEintrag, type Foto, type Projekt, type ProtokollPunkt } from '../domain/types';
+import { istIsoDatum } from '../domain/datum';
+import { FOTO_ARTEN, type BoardEintrag, type Foto, type Lieferschein, type Projekt, type ProtokollPunkt } from '../domain/types';
 import type { Repo } from '../data/repo';
 import { ki as kiStandard, KiNichtVerfuegbar, type Ki, type KiEinstellungen } from '../ki/client';
 
@@ -82,6 +83,33 @@ export async function kiNachholen(opt: {
           await opt.repo.aendere<Foto>(akt, {
             ...vorschlag,
             kiVorschlag: Object.values(vorschlag).some(Boolean),
+            ki: 'fertig',
+          });
+          anzahl++;
+        }
+      }
+
+      if (opt.bildFuerKi) {
+        const scheine = (await opt.repo.alle<Lieferschein>('lieferschein', projekt.id)).filter((l) => l.ki === 'ausstehend' && l.fotoId);
+        for (const l of scheine) {
+          const foto = await opt.repo.holeAktiv<Foto>(l.fotoId);
+          if (!foto) continue;
+          let bild: string;
+          try {
+            bild = await opt.bildFuerKi(foto.datei);
+          } catch {
+            continue;
+          }
+          const r = await ki.lieferschein(opt.kiEinst, bild);
+          const akt = await opt.repo.hole<Lieferschein>(l.id);
+          if (!akt || akt.geloescht || akt.ki !== 'ausstehend') continue;
+          // nur leere Felder füllen – was du schon eingetragen hast, bleibt
+          await opt.repo.aendere<Lieferschein>(akt, {
+            lieferant: akt.lieferant || r.lieferant,
+            datum: akt.datum || (istIsoDatum(r.datum) ? r.datum : ''),
+            nummer: akt.nummer || r.nummer,
+            material: akt.material || r.material,
+            menge: akt.menge || r.menge,
             ki: 'fertig',
           });
           anzahl++;

@@ -45,4 +45,4 @@ export function sortiereProjekte<T extends Pick<Projekt, 'nr' | 'name'>>(liste: 
   );
 }
 
-export const LEERES_PROJEKT: ProjektDaten = { nr: '', name: '', bauherr: '', adresse: '', kiErlaubt: false };
+export const LEERES_PROJEKT: ProjektDaten = { nr: '', name: '', bauherr: '', adresse: '', kiErlaubt: false, wetterAuto: false, lat: null, lon: null };

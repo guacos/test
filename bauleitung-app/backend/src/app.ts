@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { Anfrage, type Aufgabe } from './fachlich';
-import { KiFehler, type KiAufruf } from './ki';
+import { Anfrage, FotoAnfrage, LieferscheinAnfrage, type Aufgabe } from './fachlich';
+import { KiFehler, type Ki } from './ki';
 
 export interface Umgebung {
   /** Schlüssel, den die App mitschickt (Authorization: Bearer …) */
@@ -22,7 +22,7 @@ export function gleich(a: string, b: string): boolean {
 /**
  * HTTP-Schnittstelle. Es wird nichts gespeichert und nichts vom Inhalt protokolliert.
  */
-export function erstelleApp(umgebung: Umgebung, ki: KiAufruf) {
+export function erstelleApp(umgebung: Umgebung, ki: Ki) {
   const app = new Hono();
   const urspruenge = (umgebung.ERLAUBTE_URSPRUENGE ?? '')
     .split(',')
@@ -43,20 +43,36 @@ export function erstelleApp(umgebung: Umgebung, ki: KiAufruf) {
     return next();
   });
 
+  /** Führt den KI-Aufruf aus und setzt Fehler in eine Antwort um. */
+  async function antworte(aufruf: () => Promise<unknown>): Promise<Response> {
+    try {
+      return Response.json(await aufruf());
+    } catch (e) {
+      const status = e instanceof KiFehler ? e.status : 500;
+      const text = e instanceof KiFehler ? e.message : 'Interner Fehler';
+      return Response.json({ fehler: text }, { status });
+    }
+  }
+
   for (const aufgabe of ['erfassung', 'board', 'jourfixe'] as Aufgabe[]) {
     app.post(`/v1/${aufgabe}`, async (c) => {
       const body = Anfrage.safeParse(await c.req.json().catch(() => null));
       if (!body.success) return c.json({ fehler: 'Ungültige Anfrage' }, 400);
-      try {
-        const ergebnis = await ki(aufgabe, body.data.text, body.data.hatFoto ?? false);
-        return c.json(ergebnis as object);
-      } catch (e) {
-        const status = e instanceof KiFehler ? e.status : 500;
-        const text = e instanceof KiFehler ? e.message : 'Interner Fehler';
-        return c.json({ fehler: text }, status as 400);
-      }
+      return antworte(() => ki.text(aufgabe, body.data.text, body.data.hatFoto ?? false));
     });
   }
+
+  app.post('/v1/foto', async (c) => {
+    const body = FotoAnfrage.safeParse(await c.req.json().catch(() => null));
+    if (!body.success) return c.json({ fehler: 'Ungültige Anfrage' }, 400);
+    return antworte(() => ki.foto(body.data.bild, body.data.gewerke));
+  });
+
+  app.post('/v1/lieferschein', async (c) => {
+    const body = LieferscheinAnfrage.safeParse(await c.req.json().catch(() => null));
+    if (!body.success) return c.json({ fehler: 'Ungültige Anfrage' }, 400);
+    return antworte(() => ki.lieferschein(body.data.bild));
+  });
 
   return app;
 }

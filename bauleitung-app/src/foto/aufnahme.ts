@@ -1,9 +1,13 @@
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
+import { Platform } from 'react-native';
 import { fotoZeit, type FotoZeit } from '../domain/fotoKw';
 import { neueId } from '../lib/id';
 import { bildUri, speichereBild } from './dateien';
 import { exifDatum } from './exif';
+
+/** Im Browser gibt es keine Kamera-Aufnahme – dort werden Bilddateien gewählt. */
+export const kameraVerfuegbar = Platform.OS !== 'web';
 
 /** Längste Bildkante nach dem Verkleinern (Pixel) und JPEG-Qualität. */
 export const MAX_KANTE = 2048;
@@ -73,4 +77,30 @@ export async function kiBild(datei: string): Promise<string> {
   const r = await bild.saveAsync({ compress: 0.7, format: SaveFormat.JPEG, base64: true });
   if (!r.base64) throw new Error('Bild konnte nicht gelesen werden');
   return r.base64;
+}
+
+function ausBase64(b64: string): Uint8Array {
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes;
+}
+
+/** Bild für PDFs: auf 1100 px verkleinert, damit die Datei klein bleibt (E-Mail-Versand). */
+export async function pdfBild(datei: string): Promise<Uint8Array | null> {
+  const uri = await bildUri(datei);
+  if (!uri) return null;
+  try {
+    const bild = await ImageManipulator.manipulate(uri).resize({ width: 1100 }).renderAsync();
+    const r = await bild.saveAsync({ compress: 0.6, format: SaveFormat.JPEG, base64: true });
+    return r.base64 ? ausBase64(r.base64) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Ein Bild aus der Galerie oder aus Dateien wählen (z. B. Grundriss, Planausschnitt). */
+export async function bildWaehlen(): Promise<NeuesBild | null> {
+  const liste = await fotosAusGalerie(false);
+  return liste[0] ?? null;
 }

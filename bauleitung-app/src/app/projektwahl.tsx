@@ -9,7 +9,7 @@ export default function ProjektwahlScreen() {
 
   return (
     <Seite>
-      {projekte.length === 0 ? <Leer text="Noch kein Projekt angelegt." /> : null}
+      {projekte.length === 0 ? <Leer icon="briefcase-outline" text="Noch kein Projekt angelegt." /> : null}
       {projekte.map((p) => (
         <Zeile
           key={p.id}
@@ -20,6 +20,7 @@ export default function ProjektwahlScreen() {
           aktiv={p.id === aktiv}
           onPress={async () => {
             await waehlen(p.id);
+            useApp.setState({ boardKw: null });
             router.back();
           }}
         />

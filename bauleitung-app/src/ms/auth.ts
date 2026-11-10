@@ -37,15 +37,22 @@ async function lade(): Promise<Anmeldung | null> {
   if (geladen) return aktuell;
   geladen = true;
   if (TEST_TOKEN) {
+    // Nur in Test-Builds: anderes Testkonto je Browser-Profil wählbar
+    let token = TEST_TOKEN;
+    try {
+      token = globalThis.localStorage?.getItem('test-token') || TEST_TOKEN;
+    } catch {
+      /* kein localStorage */
+    }
     aktuell = {
       clientId: 'test',
-      accessToken: TEST_TOKEN,
+      accessToken: token,
       refreshToken: null,
       ablauf: Number.MAX_SAFE_INTEGER,
       konto: { name: 'Test', email: 'test@example.com', outlook: true },
     };
     try {
-      const r = await fetch(`${GRAPH_BASIS}/me`, { headers: { Authorization: `Bearer ${TEST_TOKEN}` } });
+      const r = await fetch(`${GRAPH_BASIS}/me`, { headers: { Authorization: `Bearer ${token}` } });
       const ich = (await r.json()) as { displayName?: string; mail?: string; userPrincipalName?: string };
       aktuell.konto = { name: ich.displayName ?? 'Test', email: ich.mail ?? ich.userPrincipalName ?? '', outlook: true };
     } catch {

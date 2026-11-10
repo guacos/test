@@ -1,7 +1,14 @@
 import { neueId } from '../lib/id';
 import { create } from 'zustand';
 import { sortiereProjekte } from '../domain/projekt';
-import type { Projekt, ProjektDaten } from '../domain/types';
+import {
+  EINSTELLUNGEN_ID,
+  STANDARD_GESCHOSSE,
+  STANDARD_GEWERKE,
+  type Einstellungen,
+  type Projekt,
+  type ProjektDaten,
+} from '../domain/types';
 import { Repo } from '../data/repo';
 import type { RecordStore } from '../data/RecordStore';
 import { erzeugeStore } from '../data/store';
@@ -26,6 +33,9 @@ interface AppState {
   datenStand: number;
   /** Im Board angezeigte KW (z. B. "2026-W40"), null = aktuelle Woche */
   boardKw: string | null;
+  /** Konfigurierbare Listen (Gewerke, Geschosse) */
+  gewerke: string[];
+  geschosse: string[];
 
   init: (store?: RecordStore) => Promise<void>;
   projektSpeichern: (daten: ProjektDaten, id?: string) => Promise<Projekt>;
@@ -37,6 +47,9 @@ interface AppState {
   geaendert: () => void;
   /** Ausstehende KI-Ausformulierungen nachholen (wenn Netz da ist) */
   nachholen: () => Promise<void>;
+  /** Projektliste neu aus dem Speicher lesen (z. B. nach dem Abgleich) */
+  projekteNeuLaden: () => Promise<void>;
+  listenSpeichern: (listen: { gewerke?: string[]; geschosse?: string[] }) => Promise<void>;
 }
 
 let repo: Repo | null = null;
@@ -56,6 +69,8 @@ export const useApp = create<AppState>((set, get) => ({
   kiEinst: null,
   datenStand: 0,
   boardKw: null,
+  gewerke: STANDARD_GEWERKE,
+  geschosse: STANDARD_GESCHOSSE,
 
   async init(store) {
     if (get().bereit) return;
@@ -74,7 +89,16 @@ export const useApp = create<AppState>((set, get) => ({
       if (!projekte.some((p) => p.id === aktiv)) aktiv = projekte[0]?.id ?? null;
       const kiRoh = await s.holeMeta(META_KI);
       const kiEinst = kiRoh ? (JSON.parse(kiRoh) as KiEinstellungen) : null;
-      set({ bereit: true, projekte, aktivesProjektId: aktiv, autor, kiEinst });
+      const einst = await repo.holeAktiv<Einstellungen>(EINSTELLUNGEN_ID);
+      set({
+        bereit: true,
+        projekte,
+        aktivesProjektId: aktiv,
+        autor,
+        kiEinst,
+        gewerke: einst?.gewerke?.length ? einst.gewerke : STANDARD_GEWERKE,
+        geschosse: einst?.geschosse?.length ? einst.geschosse : STANDARD_GESCHOSSE,
+      });
     } catch (e) {
       set({ fehler: e instanceof Error ? e.message : String(e) });
     }
@@ -127,9 +151,39 @@ export const useApp = create<AppState>((set, get) => ({
   },
 
   async nachholen() {
-    const { projekte, kiEinst } = get();
-    const n = await kiNachholen({ repo: holeRepo(), projekte, kiEinst, neueId });
+    const { projekte, kiEinst, gewerke } = get();
+    if (!kiEinst?.url || !projekte.some((p) => p.kiErlaubt)) return;
+    // Bildverarbeitung erst hier laden (wird nur mit KI gebraucht)
+    const { kiBild } = await import('../foto/aufnahme');
+    const n = await kiNachholen({ repo: holeRepo(), projekte, kiEinst, neueId, gewerke, bildFuerKi: kiBild });
     if (n > 0) get().geaendert();
+  },
+
+  async projekteNeuLaden() {
+    const r = holeRepo();
+    const projekte = sortiereProjekte(await r.alle<Projekt>('projekt'));
+    let aktiv = get().aktivesProjektId;
+    if (!projekte.some((p) => p.id === aktiv)) aktiv = projekte[0]?.id ?? null;
+    const einst = await r.holeAktiv<Einstellungen>(EINSTELLUNGEN_ID);
+    set({
+      projekte,
+      aktivesProjektId: aktiv,
+      ...(einst?.gewerke?.length ? { gewerke: einst.gewerke } : {}),
+      ...(einst?.geschosse?.length ? { geschosse: einst.geschosse } : {}),
+    });
+  },
+
+  async listenSpeichern(listen) {
+    const r = holeRepo();
+    const sauber = (l: string[]) => [...new Set(l.map((x) => x.trim()).filter(Boolean))];
+    const neu = {
+      gewerke: listen.gewerke ? sauber(listen.gewerke) : get().gewerke,
+      geschosse: listen.geschosse ? sauber(listen.geschosse) : get().geschosse,
+    };
+    const alt = await r.holeAktiv<Einstellungen>(EINSTELLUNGEN_ID);
+    if (alt) await r.aendere<Einstellungen>(alt, neu);
+    else await r.neu<Einstellungen>('einstellungen', null, neu, EINSTELLUNGEN_ID);
+    set(neu);
   },
 }));
 

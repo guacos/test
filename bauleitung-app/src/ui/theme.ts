@@ -63,3 +63,6 @@ export const TON: Record<Ton, { vorn: string; hinten: string }> = {
 export function useBreit(): boolean {
   return useWindowDimensions().width >= 1000;
 }
+
+/** Jour Fixe: Farben der Punkte (rot = überfällig, blau = neu, schwarz = übernommen). */
+export const FARBE_PUNKT = { rot: farbe.rot, blau: farbe.neuBlau, schwarz: farbe.text } as const;
