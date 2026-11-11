@@ -89,6 +89,10 @@ export async function initSync(): Promise<void> {
     konto,
     status: konto ? 'bereit' : 'aus',
   });
+  // Steht noch der Gerätename als Ersteller da, den Namen des Microsoft-Kontos übernehmen
+  if (konto?.name && /^Gerät [0-9a-f]{6}$/i.test(useApp.getState().autor)) {
+    await useApp.getState().autorSetzen(konto.name);
+  }
   repo.beiAenderung = () => {
     planeAbgleich();
     zaehle().catch(() => {});

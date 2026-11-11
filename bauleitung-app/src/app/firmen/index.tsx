@@ -8,7 +8,7 @@ import { MitProjekt, Titel } from '../../ui/Rahmen';
 export default function FirmenScreen() {
   return (
     <>
-      <Titel text="Firmen" />
+      <Titel text="Firmen" zurueckZu="/mehr" />
       <MitProjekt>
         <Liste />
       </MitProjekt>

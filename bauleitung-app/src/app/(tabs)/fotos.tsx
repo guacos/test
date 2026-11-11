@@ -33,7 +33,7 @@ function Kachel({ f, gewaehlt, auswahlModus, onPress, onLang }: { f: Foto; gewae
       testID={`foto-${f.id}`}
       accessibilityRole="button"
       accessibilityLabel={`Foto ${f.gewerk ?? 'ohne Gewerk'} ${f.art ?? ''}`}
-      accessibilityState={{ selected: gewaehlt }}
+      aria-selected={gewaehlt}
       onPress={onPress}
       onLongPress={onLang}
       style={({ pressed }) => [s.kachel, gewaehlt && s.kachelGewaehlt, pressed && { opacity: 0.8 }]}
@@ -41,7 +41,7 @@ function Kachel({ f, gewaehlt, auswahlModus, onPress, onLang }: { f: Foto; gewae
       <Bild foto={f} style={s.kachelBild} />
       <View style={s.kachelInfo}>
         <Text style={s.kachelText} numberOfLines={1}>
-          {[f.art, f.geschoss].filter(Boolean).join(' · ') || 'ohne Tags'}
+          {[f.art ?? 'ohne Art', f.geschoss].filter(Boolean).join(' · ')}
         </Text>
         {f.kiVorschlag ? <Badge text="KI" ton="gelb" /> : null}
       </View>

@@ -18,7 +18,7 @@ import { toast } from '../../ui/toast';
 export default function BautagebuchScreen() {
   return (
     <>
-      <Titel text="Bautagebuch" />
+      <Titel text="Bautagebuch" zurueckZu="/mehr" />
       <MitProjekt>
         <Liste />
       </MitProjekt>

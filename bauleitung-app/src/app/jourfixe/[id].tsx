@@ -20,15 +20,16 @@ import { DiktatKnopf, diktatVerfuegbar } from '../../ui/Diktat';
 import { Titel } from '../../ui/Rahmen';
 import { farbe, FARBE_PUNKT, groesse } from '../../ui/theme';
 import { toast } from '../../ui/toast';
+import { zurueck } from '../../ui/navigation';
 
 export default function ProtokollScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const p = useDatensatz<Protokoll>(id);
-  if (p === undefined) return <Titel text="Protokoll" />;
+  if (p === undefined) return <Titel text="Protokoll" zurueckZu="/jourfixe" />;
   if (!p) {
     return (
       <Seite>
-        <Titel text="Protokoll" />
+        <Titel text="Protokoll" zurueckZu="/jourfixe" />
         <Leer text="Protokoll nicht gefunden." />
       </Seite>
     );
@@ -112,12 +113,12 @@ function Ansicht({ protokoll }: { protokoll: Protokoll }) {
     if (!(await bestaetigen('Protokoll löschen?', `Protokoll Nr. ${protokoll.nr} mit ${punkte.length} Punkt(en) wird gelöscht.`))) return;
     await protokollLoeschen(holeRepo(), protokoll);
     geaendert();
-    router.back();
+    zurueck('/jourfixe');
   }
 
   return (
     <Seite>
-      <Titel text={`Protokoll Nr. ${protokoll.nr}`} />
+      <Titel text={`Protokoll Nr. ${protokoll.nr}`} zurueckZu="/jourfixe" />
       <Karte balken={z.ueberfaellig ? farbe.rot : farbe.neuBlau}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
           <Text style={s.titel}>Jour-Fixe-Protokoll Nr. {protokoll.nr}</Text>
@@ -188,7 +189,7 @@ function Ansicht({ protokoll }: { protokoll: Protokoll }) {
                   <Text style={[s.hinweis, { color: c }]} testID="punkt-hinweis">
                     {punktHinweis(pt, protokoll.nr, tag)}
                   </Text>
-                  {pt.beschreibung ? <Text style={[s.beschreibung, { color: c }]}>{pt.beschreibung}</Text> : null}
+                  {pt.beschreibung && pt.beschreibung.trim().toLowerCase() !== pt.thema.trim().toLowerCase() ? <Text style={[s.beschreibung, { color: c }]}>{pt.beschreibung}</Text> : null}
                   {pt.ergaenzungen.map((e) => (
                     <Text key={e.id} style={[s.beschreibung, { color: f === 'rot' ? farbe.rot : FARBE_PUNKT[ergaenzungFarbe(e, protokoll.nr)] }]} testID="punkt-ergaenzung">
                       Ergänzung vom {datumDe(e.datum)}: {e.text}

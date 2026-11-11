@@ -8,16 +8,17 @@ import { Auswahl, Feld, Knopf, Leer, Reihe, Seite } from '../../ui/bausteine';
 import { bestaetigen } from '../../ui/bestaetigen';
 import { Titel } from '../../ui/Rahmen';
 import { toast } from '../../ui/toast';
+import { zurueck } from '../../ui/navigation';
 
 export default function FirmaScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const neu = id === 'neu';
   const f = useDatensatz<Firma>(neu ? undefined : id);
-  if (!neu && f === undefined) return <Titel text="Firma" />;
+  if (!neu && f === undefined) return <Titel text="Firma" zurueckZu="/firmen" />;
   if (!neu && !f) {
     return (
       <Seite>
-        <Titel text="Firma" />
+        <Titel text="Firma" zurueckZu="/firmen" />
         <Leer text="Firma nicht gefunden." />
       </Seite>
     );
@@ -55,21 +56,21 @@ function Formular({ f }: { f: Firma | null }) {
     else await holeRepo().neu<Firma>('firma', projekt.id, felder);
     geaendert();
     toast('Firma gespeichert');
-    router.back();
+    zurueck('/firmen');
   }
 
   async function loeschen() {
     if (!f || !(await bestaetigen('Firma löschen?', f.name))) return;
     await holeRepo().loesche(f);
     geaendert();
-    router.back();
+    zurueck('/firmen');
   }
 
   const gewerkListe = gewerk && !gewerke.includes(gewerk) ? [gewerk, ...gewerke] : gewerke;
 
   return (
     <Seite>
-      <Titel text={f ? 'Firma bearbeiten' : 'Neue Firma'} />
+      <Titel text={f ? 'Firma bearbeiten' : 'Neue Firma'} zurueckZu="/firmen" />
       <Feld label="Firma *" value={name} onChangeText={setName} fehler={fehler.name} testID="feld-firma-name" />
       <Auswahl label="Gewerk" werte={gewerkListe} wert={gewerk} onChange={setGewerk} leerText="ohne" testID="firma-gewerk" />
       <Feld label="Ansprechpartner" value={ansprechpartner} onChangeText={setAnsprechpartner} testID="feld-ansprechpartner" />
@@ -84,7 +85,7 @@ function Formular({ f }: { f: Firma | null }) {
       ) : null}
       <View style={{ gap: 12, marginTop: 12 }}>
         <Knopf titel="Speichern" icon="content-save" onPress={speichern} testID="speichern" />
-        <Knopf titel="Abbrechen" art="neben" onPress={() => router.back()} />
+        <Knopf titel="Abbrechen" art="neben" onPress={() => zurueck('/firmen')} />
         {f ? <Knopf titel="Firma löschen" art="gefahr" icon="delete" onPress={loeschen} /> : null}
       </View>
     </Seite>

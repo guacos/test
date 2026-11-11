@@ -13,6 +13,7 @@ import { Bild } from '../../ui/Bild';
 import { Titel } from '../../ui/Rahmen';
 import { farbe, groesse } from '../../ui/theme';
 import { toast } from '../../ui/toast';
+import { zurueck } from '../../ui/navigation';
 
 const QUELLE: Record<Foto['kwQuelle'], string> = {
   exif: 'aus dem Aufnahmedatum (EXIF)',
@@ -25,11 +26,11 @@ const QUELLE: Record<Foto['kwQuelle'], string> = {
 export default function FotoScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const f = useDatensatz<Foto>(id);
-  if (f === undefined) return <Titel text="Foto" />;
+  if (f === undefined) return <Titel text="Foto" zurueckZu="/fotos" />;
   if (!f) {
     return (
       <Seite>
-        <Titel text="Foto" />
+        <Titel text="Foto" zurueckZu="/fotos" />
         <Leer text="Foto nicht gefunden." />
       </Seite>
     );
@@ -56,7 +57,7 @@ function Ansicht({ f }: { f: Foto }) {
       tags: [...new Set(tags.split(',').map((t) => t.trim()).filter(Boolean))],
     });
     toast('Foto gespeichert');
-    router.back();
+    zurueck('/fotos');
   }
 
   async function loeschen() {
@@ -64,7 +65,7 @@ function Ansicht({ f }: { f: Foto }) {
     await fotoLoeschen(holeRepo(), f.id);
     geaendert();
     toast('Foto gelöscht');
-    router.back();
+    zurueck('/fotos');
   }
 
   const k = f.kw ? ausSchluessel(f.kw) : null;
@@ -73,7 +74,7 @@ function Ansicht({ f }: { f: Foto }) {
 
   return (
     <Seite>
-      <Titel text="Foto" />
+      <Titel text="Foto" zurueckZu="/fotos" />
       <Bild foto={f} einpassen style={{ width: '100%', aspectRatio: f.breite / f.hoehe || 4 / 3, maxHeight: 520, borderRadius: 14, backgroundColor: '#0B1220' }} />
 
       {f.kiVorschlag ? (

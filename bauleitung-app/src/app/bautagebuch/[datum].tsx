@@ -16,20 +16,21 @@ import { FotoLeiste } from '../../ui/FotoLeiste';
 import { MitProjekt, Titel } from '../../ui/Rahmen';
 import { farbe, groesse } from '../../ui/theme';
 import { toast } from '../../ui/toast';
+import { zurueck } from '../../ui/navigation';
 
 export default function BautagScreen() {
   const { datum } = useLocalSearchParams<{ datum: string }>();
   if (!datum || !istIsoDatum(datum)) {
     return (
       <Seite>
-        <Titel text="Bautagebuch" />
+        <Titel text="Bautagebuch" zurueckZu="/bautagebuch" />
         <Leer text="Ungültiges Datum." />
       </Seite>
     );
   }
   return (
     <>
-      <Titel text="Bautagebuch" />
+      <Titel text="Bautagebuch" zurueckZu="/bautagebuch" />
       <MitProjekt>
         <Tag key={datum} datum={datum} />
       </MitProjekt>
@@ -116,7 +117,7 @@ function Tag({ datum }: { datum: string }) {
     if (!tag || !(await bestaetigen('Eintrag löschen?', datumLang(datum)))) return;
     await holeRepo().loesche(tag);
     geaendert();
-    router.back();
+    zurueck('/bautagebuch');
   }
 
   const notizWert = notiz ?? tag?.notiz ?? '';
@@ -261,7 +262,7 @@ function Tag({ datum }: { datum: string }) {
       <View style={{ gap: 12, marginTop: 12 }}>
         <Reihe>
           {laeuftPdf ? <ActivityIndicator color={farbe.navy} /> : <Knopf titel="PDF" icon="file-pdf-box" art="navy" onPress={pdf} testID="tag-pdf" />}
-          <Knopf titel="Fertig" icon="check" onPress={async () => { await kette.current; router.back(); }} testID="tag-fertig" />
+          <Knopf titel="Fertig" icon="check" onPress={async () => { await kette.current; zurueck('/bautagebuch'); }} testID="tag-fertig" />
         </Reihe>
         {tag ? <Knopf titel="Eintrag löschen" art="gefahr" icon="delete" onPress={loeschen} /> : null}
       </View>

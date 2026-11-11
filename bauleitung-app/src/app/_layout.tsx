@@ -6,6 +6,7 @@ import { useEffect } from 'react';
 import { ActivityIndicator, AppState, Text, View } from 'react-native';
 import { useApp } from '../state/useApp';
 import { initSync, jetztAbgleichen, planeAbgleich } from '../sync/dienst';
+import { KopfZurueck } from '../ui/Rahmen';
 import { farbe, groesse } from '../ui/theme';
 import { ToastAnzeige } from '../ui/toast';
 
@@ -73,8 +74,8 @@ export default function RootLayout() {
         }}
       >
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="projektwahl" options={{ title: 'Projekt wählen', presentation: 'modal' }} />
-        <Stack.Screen name="erfassen" options={{ title: 'Schnellerfassung', presentation: 'modal' }} />
+        <Stack.Screen name="projektwahl" options={{ title: 'Projekt wählen', presentation: 'modal', headerBackVisible: false, headerLeft: () => <KopfZurueck /> }} />
+        <Stack.Screen name="erfassen" options={{ title: 'Schnellerfassung', presentation: 'modal', headerBackVisible: false, headerLeft: () => <KopfZurueck /> }} />
         <Stack.Screen name="auth" options={{ title: 'Anmeldung' }} />
       </Stack>
       <ToastAnzeige />

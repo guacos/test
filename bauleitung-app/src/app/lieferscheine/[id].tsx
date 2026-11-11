@@ -12,15 +12,16 @@ import { Bild } from '../../ui/Bild';
 import { DatumFeld } from '../../ui/DatumFeld';
 import { Titel } from '../../ui/Rahmen';
 import { toast } from '../../ui/toast';
+import { zurueck } from '../../ui/navigation';
 
 export default function LieferscheinScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const l = useDatensatz<Lieferschein>(id);
-  if (l === undefined) return <Titel text="Lieferschein" />;
+  if (l === undefined) return <Titel text="Lieferschein" zurueckZu="/lieferscheine" />;
   if (!l) {
     return (
       <Seite>
-        <Titel text="Lieferschein" />
+        <Titel text="Lieferschein" zurueckZu="/lieferscheine" />
         <Leer text="Lieferschein nicht gefunden." />
       </Seite>
     );
@@ -60,7 +61,7 @@ function Formular({ l }: { l: Lieferschein }) {
       lagerort: lagerort.trim(),
     });
     toast('Lieferschein gespeichert');
-    router.back();
+    zurueck('/lieferscheine');
   }
 
   async function loeschen() {
@@ -70,14 +71,14 @@ function Formular({ l }: { l: Lieferschein }) {
     if (akt) await holeRepo().loesche(akt);
     if (foto) await holeRepo().loesche(foto);
     geaendert();
-    router.back();
+    zurueck('/lieferscheine');
   }
 
   const lieferungen = offeneLieferungen(board, l);
 
   return (
     <Seite>
-      <Titel text="Lieferschein" />
+      <Titel text="Lieferschein" zurueckZu="/lieferscheine" />
       {foto ? <Bild foto={foto} einpassen style={{ width: '100%', aspectRatio: foto.breite / foto.hoehe || 3 / 4, maxHeight: 460, borderRadius: 14, backgroundColor: '#0B1220' }} /> : null}
       {l.ki === 'fertig' ? <Badge text="Von der KI gelesen – bitte prüfen" ton="gelb" icon="creation" /> : null}
       {l.ki === 'ausstehend' ? <Text2 leise>Die KI liest den Lieferschein, sobald Netz da ist. Was du schon einträgst, bleibt.</Text2> : null}

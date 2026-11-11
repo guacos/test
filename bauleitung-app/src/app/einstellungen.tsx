@@ -22,7 +22,7 @@ export default function EinstellungenScreen() {
 
   return (
     <Seite>
-      <Titel text="Einstellungen" />
+      <Titel text="Einstellungen" zurueckZu="/mehr" />
       <Abschnitt titel="Dein Name">
         <Text2 leise>Steht als Ersteller an jedem Eintrag. Nach der Microsoft-Anmeldung wird der Kontoname übernommen.</Text2>
         <Feld label="Name" value={name} onChangeText={setName} testID="feld-autor" />

@@ -5,6 +5,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-nati
 import { useAktivesProjekt } from '../state/useApp';
 import { useSync, type SyncStatus } from '../sync/dienst';
 import { Knopf, Leer, Seite, type IconName } from './bausteine';
+import { zurueck } from './navigation';
 import { farbe, groesse, schattenStark } from './theme';
 
 /** Projekt-Umschalter oben in der Kopfzeile. */
@@ -96,9 +97,34 @@ export function MitProjekt({ children }: { children: ReactNode }) {
   );
 }
 
+/** Zurück-Pfeil für die Kopfzeile. Funktioniert auch nach dem Neuladen der Seite im Browser. */
+export function KopfZurueck({ zu = '/' }: { zu?: string }) {
+  return (
+    <Pressable
+      testID="kopf-zurueck"
+      accessibilityRole="button"
+      accessibilityLabel="Zurück"
+      onPress={() => zurueck(zu)}
+      hitSlop={10}
+      style={({ pressed }) => [{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center', marginRight: 4 }, pressed && { opacity: 0.6 }]}
+    >
+      <MaterialCommunityIcons name="arrow-left" size={26} color={farbe.weiss} />
+    </Pressable>
+  );
+}
+
 /** Setzt den Titel der Kopfzeile eines Unterbildschirms. */
-export function Titel({ text, rechts }: { text: string; rechts?: ReactNode }) {
-  return <Stack.Screen options={{ title: text, headerRight: rechts ? () => rechts : undefined }} />;
+export function Titel({ text, rechts, zurueckZu = '/' }: { text: string; rechts?: ReactNode; zurueckZu?: string }) {
+  return (
+    <Stack.Screen
+      options={{
+        title: text,
+        headerBackVisible: false,
+        headerLeft: () => <KopfZurueck zu={zurueckZu} />,
+        headerRight: rechts ? () => rechts : undefined,
+      }}
+    />
+  );
 }
 
 const s = StyleSheet.create({

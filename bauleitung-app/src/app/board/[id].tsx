@@ -12,15 +12,16 @@ import { FotoLeiste } from '../../ui/FotoLeiste';
 import { Titel } from '../../ui/Rahmen';
 import { farbe, groesse } from '../../ui/theme';
 import { toast } from '../../ui/toast';
+import { zurueck } from '../../ui/navigation';
 
 export default function BoardEintragScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const e = useDatensatz<BoardEintrag>(id);
-  if (e === undefined) return <Titel text="Eintrag" />;
+  if (e === undefined) return <Titel text="Eintrag" zurueckZu="/board" />;
   if (!e) {
     return (
       <Seite>
-        <Titel text="Eintrag" />
+        <Titel text="Eintrag" zurueckZu="/board" />
         <Leer text="Eintrag nicht gefunden." />
       </Seite>
     );
@@ -67,7 +68,7 @@ function Formular({ e }: { e: BoardEintrag }) {
     useApp.setState({ boardKw: kw });
     geaendert();
     toast('Eintrag gespeichert');
-    router.back();
+    zurueck('/board');
   }
 
   async function loeschen() {
@@ -75,7 +76,7 @@ function Formular({ e }: { e: BoardEintrag }) {
     await holeRepo().loesche(e);
     geaendert();
     toast('Eintrag gelöscht');
-    router.back();
+    zurueck('/board');
   }
 
   async function punktDazu() {
@@ -87,7 +88,7 @@ function Formular({ e }: { e: BoardEintrag }) {
 
   return (
     <Seite>
-      <Titel text="Eintrag bearbeiten" />
+      <Titel text="Eintrag bearbeiten" zurueckZu="/board" />
       <Feld label="Titel" value={titel} onChangeText={setTitel} testID="feld-titel" />
       <Feld label="Text" value={text} onChangeText={setText} multiline testID="feld-text" />
       {e.ki === 'ausstehend' ? <Text2 leise>Die KI-Ausformulierung wird nachgeholt, sobald Netz da ist.</Text2> : null}
@@ -177,7 +178,7 @@ function Formular({ e }: { e: BoardEintrag }) {
 
       <View style={{ gap: 12, marginTop: 12 }}>
         <Knopf titel="Speichern" icon="content-save" onPress={speichern} testID="speichern" />
-        <Knopf titel="Abbrechen" art="neben" onPress={() => router.back()} />
+        <Knopf titel="Abbrechen" art="neben" onPress={() => zurueck('/board')} />
         <Knopf titel="Eintrag löschen" art="gefahr" icon="delete" onPress={loeschen} testID="loeschen" />
       </View>
     </Seite>

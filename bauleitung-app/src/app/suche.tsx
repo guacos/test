@@ -65,7 +65,7 @@ export default function SucheScreen() {
 
   return (
     <Seite>
-      <Titel text="Suche" />
+      <Titel text="Suche" zurueckZu="/mehr" />
       <Feld label="Suchbegriff" value={frage} onChangeText={setFrage} placeholder="z. B. Estrich, Brandschutz, Firma …" autoFocus autoCapitalize="none" testID="suche-feld" />
       <SchalterZeile label="In allen Projekten suchen" wert={alle} onChange={setAlle} testID="suche-alle" />
       {frage.trim() ? (

@@ -68,7 +68,8 @@ export async function protokollPdf(opt: {
     if (!istNeu(p, protokoll.nr)) hinweise.push(`Offen seit Nr. ${p.ursprungNr}`);
     else hinweise.push('Neu');
     inhalt.push({ text: hinweise.join(' · '), groesse: 8, farbe: f, oben: 1 });
-    if (p.beschreibung) inhalt.push({ text: p.beschreibung, farbe: f, oben: 3 });
+    // Ohne KI sind Thema und Beschreibung gleich – dann nicht doppelt drucken
+    if (p.beschreibung && p.beschreibung.trim().toLowerCase() !== p.thema.trim().toLowerCase()) inhalt.push({ text: p.beschreibung, farbe: f, oben: 3 });
     for (const e of p.ergaenzungen) {
       const ef = farbe === 'rot' ? FARBE.rot : FARBEN[ergaenzungFarbe(e, protokoll.nr)];
       inhalt.push({ text: `Ergänzung vom ${datumDe(e.datum)}: ${e.text}`, farbe: ef, oben: 4 });

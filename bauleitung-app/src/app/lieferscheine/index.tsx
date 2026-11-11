@@ -15,7 +15,7 @@ import { toast } from '../../ui/toast';
 export default function LieferscheineScreen() {
   return (
     <>
-      <Titel text="Lieferscheine" />
+      <Titel text="Lieferscheine" zurueckZu="/mehr" />
       <MitProjekt>
         <Liste />
       </MitProjekt>

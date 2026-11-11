@@ -93,7 +93,7 @@ export default function SyncScreen() {
 
   return (
     <Seite>
-      <Titel text="Microsoft-Konto und Abgleich" />
+      <Titel text="Microsoft-Konto und Abgleich" zurueckZu="/mehr" />
 
       <Abschnitt titel="Microsoft-Konto">
         {sync.konto ? (

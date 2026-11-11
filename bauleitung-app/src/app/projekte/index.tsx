@@ -9,7 +9,7 @@ export default function ProjekteScreen() {
 
   return (
     <Seite>
-      <Titel text="Projekte" />
+      <Titel text="Projekte" zurueckZu="/mehr" />
       <Knopf titel="Neues Projekt" icon="plus" onPress={() => router.push('/projekte/neu')} testID="projekt-neu" />
       {projekte.length === 0 ? <Leer icon="briefcase-outline" text="Noch kein Projekt angelegt." /> : null}
       {projekte.map((p) => (

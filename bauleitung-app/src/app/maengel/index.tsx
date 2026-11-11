@@ -14,7 +14,7 @@ import { toast } from '../../ui/toast';
 export default function MaengelScreen() {
   return (
     <>
-      <Titel text="Mängel" />
+      <Titel text="Mängel" zurueckZu="/mehr" />
       <MitProjekt>
         <Liste />
       </MitProjekt>

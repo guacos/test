@@ -16,6 +16,7 @@ import { Bild } from '../ui/Bild';
 import { DiktatKnopf, diktatVerfuegbar } from '../ui/Diktat';
 import { MitProjekt } from '../ui/Rahmen';
 import { farbe, groesse, schatten } from '../ui/theme';
+import { zurueck } from '../ui/navigation';
 
 export default function ErfassenScreen() {
   return (
@@ -132,7 +133,7 @@ function Erfassen() {
           }}
           testID="naechste"
         />
-        <Knopf titel="Fertig" art="neben" onPress={() => router.back()} testID="erfassen-fertig" />
+        <Knopf titel="Fertig" art="neben" onPress={() => zurueck('/')} testID="erfassen-fertig" />
       </Seite>
     );
   }

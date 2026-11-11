@@ -21,7 +21,7 @@ export default function ProjektBearbeitenScreen() {
 
   return (
     <>
-    <Titel text="Projekt bearbeiten" />
+    <Titel text="Projekt bearbeiten" zurueckZu="/projekte" />
     <ProjektFormular
       id={p.id}
       start={{ nr: p.nr, name: p.name, bauherr: p.bauherr, adresse: p.adresse, kiErlaubt: p.kiErlaubt, wetterAuto: p.wetterAuto, lat: p.lat, lon: p.lon }}

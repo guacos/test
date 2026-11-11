@@ -94,7 +94,7 @@ export function Knopf({
       testID={testID}
       accessibilityRole="button"
       accessibilityLabel={titel}
-      accessibilityState={{ disabled: !!deaktiviert }}
+      aria-disabled={!!deaktiviert}
       disabled={deaktiviert}
       onPress={onPress}
       style={({ pressed }) => [
@@ -188,7 +188,7 @@ export function SchalterZeile({
       <Pressable
         testID={testID}
         accessibilityRole="switch"
-        accessibilityState={{ checked: wert }}
+        aria-checked={wert}
         accessibilityLabel={label}
         onPress={() => onChange(!wert)}
         style={[s.schalterZeile, wert && { borderColor: farbe.ok, backgroundColor: farbe.okZart }]}
@@ -346,7 +346,7 @@ export function Chip({
     <Pressable
       testID={testID}
       accessibilityRole={onPress ? 'button' : 'text'}
-      accessibilityState={{ selected: !!aktiv }}
+      aria-selected={!!aktiv}
       disabled={!onPress}
       onPress={onPress}
       style={({ pressed }) => [s.chip, aktiv && s.chipAktiv, pressed && { opacity: 0.7 }]}
@@ -416,7 +416,7 @@ export function Haken({
       <Pressable
         testID={testID}
         accessibilityRole="checkbox"
-        accessibilityState={{ checked: wert }}
+        aria-checked={wert}
         accessibilityLabel={text}
         onPress={() => onChange(!wert)}
         style={({ pressed }) => [s.hakenTippen, pressed && { opacity: 0.6 }]}

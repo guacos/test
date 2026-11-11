@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { Knopf, Leer, Seite, Zeile } from '../ui/bausteine';
 import { useApp } from '../state/useApp';
+import { zurueck } from '../ui/navigation';
 
 export default function ProjektwahlScreen() {
   const projekte = useApp((s) => s.projekte);
@@ -21,7 +22,7 @@ export default function ProjektwahlScreen() {
           onPress={async () => {
             await waehlen(p.id);
             useApp.setState({ boardKw: null });
-            router.back();
+            zurueck('/');
           }}
         />
       ))}

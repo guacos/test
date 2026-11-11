@@ -13,15 +13,16 @@ import { PlanPin } from '../../ui/PlanPin';
 import { Titel } from '../../ui/Rahmen';
 import { farbe, groesse } from '../../ui/theme';
 import { toast } from '../../ui/toast';
+import { zurueck } from '../../ui/navigation';
 
 export default function MangelScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const m = useDatensatz<Mangel>(id);
-  if (m === undefined) return <Titel text="Mangel" />;
+  if (m === undefined) return <Titel text="Mangel" zurueckZu="/maengel" />;
   if (!m) {
     return (
       <Seite>
-        <Titel text="Mangel" />
+        <Titel text="Mangel" zurueckZu="/maengel" />
         <Leer text="Mangel nicht gefunden." />
       </Seite>
     );
@@ -57,14 +58,14 @@ function Formular({ m }: { m: Mangel }) {
       ort: ort.trim(),
     }));
     toast('Mangel gespeichert');
-    router.back();
+    zurueck('/maengel');
   }
 
   async function loeschen() {
     if (!(await bestaetigen('Mangel löschen?', `${m.nr} · ${m.titel || '(ohne Titel)'}`))) return;
     await holeRepo().loesche(m);
     geaendert();
-    router.back();
+    zurueck('/maengel');
   }
 
   const plan = plaene.find((p) => p.id === m.planId);
@@ -72,7 +73,7 @@ function Formular({ m }: { m: Mangel }) {
 
   return (
     <Seite>
-      <Titel text={`Mangel ${m.nr}`} />
+      <Titel text={`Mangel ${m.nr}`} zurueckZu="/maengel" />
       <Feld label="Titel *" value={titel} onChangeText={setTitel} placeholder="z. B. Revisionsklappe fehlt" testID="feld-mangel-titel" autoFocus={!m.titel} />
       <Feld label="Beschreibung" value={beschreibung} onChangeText={setBeschreibung} multiline testID="feld-mangel-beschreibung" />
 

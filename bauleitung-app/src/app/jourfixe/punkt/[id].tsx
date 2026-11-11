@@ -16,16 +16,17 @@ import { FotoLeiste } from '../../../ui/FotoLeiste';
 import { Titel } from '../../../ui/Rahmen';
 import { farbe, FARBE_PUNKT, groesse } from '../../../ui/theme';
 import { toast } from '../../../ui/toast';
+import { zurueck } from '../../../ui/navigation';
 
 export default function PunktScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const p = useDatensatz<ProtokollPunkt>(id);
   const protokoll = useDatensatz<Protokoll>(p?.protokollId);
-  if (p === undefined || (p && protokoll === undefined)) return <Titel text="Punkt" />;
+  if (p === undefined || (p && protokoll === undefined)) return <Titel text="Punkt" zurueckZu="/jourfixe" />;
   if (!p || !protokoll) {
     return (
       <Seite>
-        <Titel text="Punkt" />
+        <Titel text="Punkt" zurueckZu="/jourfixe" />
         <Leer text="Punkt nicht gefunden." />
       </Seite>
     );
@@ -63,7 +64,7 @@ function Formular({ p, protokoll }: { p: ProtokollPunkt; protokoll: Protokoll })
     if (ergaenzung.trim()) await ergaenzungAnhaengen(holeRepo(), p.id, protokoll.nr, ergaenzung, neueId);
     geaendert();
     toast('Punkt gespeichert');
-    router.back();
+    zurueck('/jourfixe');
   }
 
   async function ergaenze() {
@@ -77,12 +78,12 @@ function Formular({ p, protokoll }: { p: ProtokollPunkt; protokoll: Protokoll })
     if (!(await bestaetigen('Punkt entfernen?', p.thema))) return;
     await holeRepo().loesche(p);
     geaendert();
-    router.back();
+    zurueck('/jourfixe');
   }
 
   return (
     <Seite>
-      <Titel text={`Punkt ${punktNr(p)}`} />
+      <Titel text={`Punkt ${punktNr(p)}`} zurueckZu="/jourfixe" />
       <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
         <Text style={{ fontSize: groesse.schriftGross, fontWeight: '800', color: c }}>{punktNr(p)}</Text>
         <Badge text={punktHinweis(p, protokoll.nr, tag)} ton={f === 'rot' ? 'rot' : f === 'blau' ? 'blau' : 'neutral'} />
@@ -99,7 +100,7 @@ function Formular({ p, protokoll }: { p: ProtokollPunkt; protokoll: Protokoll })
       ) : (
         <Karte balken={farbe.text}>
           <Text style={{ fontSize: groesse.schrift + 1, fontWeight: '800', color: farbe.text }}>{p.thema}</Text>
-          {p.beschreibung ? <Text2>{p.beschreibung}</Text2> : null}
+          {p.beschreibung && p.beschreibung.trim().toLowerCase() !== p.thema.trim().toLowerCase() ? <Text2>{p.beschreibung}</Text2> : null}
           <Text2 leise>Aus Protokoll Nr. {p.ursprungNr} übernommen – der Text bleibt stehen. Neues bitte als Ergänzung anhängen.</Text2>
         </Karte>
       )}
@@ -179,7 +180,7 @@ function Formular({ p, protokoll }: { p: ProtokollPunkt; protokoll: Protokoll })
       {!gesperrt ? (
         <View style={{ gap: 12, marginTop: 12 }}>
           <Knopf titel="Speichern" icon="content-save" onPress={speichern} testID="speichern" />
-          <Knopf titel="Abbrechen" art="neben" onPress={() => router.back()} />
+          <Knopf titel="Abbrechen" art="neben" onPress={() => zurueck('/jourfixe')} />
           <Knopf titel="Punkt entfernen" art="gefahr" icon="delete" onPress={loeschen} testID="loeschen" />
         </View>
       ) : null}

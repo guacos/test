@@ -30,7 +30,7 @@ export function DatumFeld({
           borderRadius: groesse.radiusKlein + 2,
           padding: '0 14px',
           fontSize: groesse.schrift + 1,
-          fontFamily: 'inherit',
+          fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
           color: farbe.text,
           backgroundColor: farbe.karte,
           boxSizing: 'border-box',

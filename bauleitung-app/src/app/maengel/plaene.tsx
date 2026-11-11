@@ -15,7 +15,7 @@ import { toast } from '../../ui/toast';
 export default function PlaeneScreen() {
   return (
     <>
-      <Titel text="Grundrisse" />
+      <Titel text="Grundrisse" zurueckZu="/maengel" />
       <MitProjekt>
         <Liste />
       </MitProjekt>
