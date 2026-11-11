@@ -23,6 +23,8 @@ interface Anmeldung {
 }
 
 export class AnmeldeFehler extends Error {}
+/** Der Anmeldedienst von Microsoft ist gerade nicht erreichbar (kein Netz). */
+export class KeinNetz extends Error {}
 
 let aktuell: Anmeldung | null = null;
 let geladen = false;
@@ -75,7 +77,8 @@ async function merke(a: Anmeldung | null) {
   aktuell = a;
   geladen = true;
   if (TEST_TOKEN) return;
-  if (a) await speichereAnmeldung(JSON.stringify(a));
+  // Dauerhaft gespeichert wird nur der Erneuerungsschlüssel; der kurzlebige Zugangsschlüssel bleibt im Arbeitsspeicher.
+  if (a) await speichereAnmeldung(JSON.stringify({ ...a, accessToken: '', ablauf: 0 }));
   else await loescheAnmeldung();
 }
 
@@ -134,12 +137,15 @@ export async function abmelden(): Promise<void> {
   await merke(null);
 }
 
-/** Gültigen Zugangsschlüssel holen (wird bei Bedarf erneuert). null = nicht angemeldet. */
+/**
+ * Gültigen Zugangsschlüssel holen (wird bei Bedarf erneuert). null = nicht angemeldet.
+ * Wirft KeinNetz, wenn die Erneuerung mangels Verbindung nicht möglich ist.
+ */
 export async function holeToken(): Promise<string | null> {
   const a = await lade();
   if (!a) return null;
   const jetzt = Math.floor(Date.now() / 1000);
-  if (a.ablauf - jetzt > 120) return a.accessToken;
+  if (a.accessToken && a.ablauf - jetzt > 120) return a.accessToken;
   if (!a.refreshToken) {
     await merke(null);
     return null;
@@ -151,10 +157,14 @@ export async function holeToken(): Promise<string | null> {
       return neu.accessToken;
     } catch (e) {
       // Erneuerung abgelehnt (z. B. nach 24 h im Browser oder Kennwort geändert) → neu anmelden.
-      // Bei reinen Netzfehlern bleibt die Anmeldung erhalten.
       const text = e instanceof Error ? e.message : String(e);
-      if (/invalid_grant|interaction_required|AADSTS/i.test(text)) await merke(null);
-      return null;
+      const code = (e as { code?: string }).code ?? '';
+      if (/invalid_grant|interaction_required|invalid_client|unauthorized_client/.test(code) || /AADSTS/i.test(text)) {
+        await merke(null);
+        return null;
+      }
+      // Sonst: kein Netz – die Anmeldung bleibt erhalten
+      throw new KeinNetz('Keine Verbindung zu Microsoft');
     } finally {
       erneuerung = null;
     }

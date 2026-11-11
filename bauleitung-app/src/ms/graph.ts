@@ -34,7 +34,13 @@ export class Graph {
 
   /** Führt eine Anfrage aus. Wiederholt bei Überlastung (429/503/504) bis zu dreimal. */
   async anfrage(methode: string, pfad: string, opt: GraphOptionen = {}): Promise<Response> {
-    const token = await this.token();
+    let token: string | null;
+    try {
+      token = await this.token();
+    } catch {
+      // Zugangsschlüssel konnte mangels Verbindung nicht erneuert werden
+      throw new GraphFehler('Keine Verbindung zu Microsoft', 0, 'netz');
+    }
     if (!token) throw new NichtAngemeldet('Nicht bei Microsoft angemeldet');
     const url = /^https?:\/\//.test(pfad) ? pfad : `${this.basis}${pfad}`;
     const headers: Record<string, string> = { Authorization: `Bearer ${token}`, ...opt.headers };

@@ -14,7 +14,7 @@ function ordner(): Directory {
 export async function speichereBild(quelleUri: string, name: string): Promise<void> {
   const ziel = new File(ordner(), name);
   if (ziel.exists) ziel.delete();
-  new File(quelleUri).copy(ziel);
+  await new File(quelleUri).copy(ziel);
 }
 
 export async function bildUri(name: string): Promise<string> {
