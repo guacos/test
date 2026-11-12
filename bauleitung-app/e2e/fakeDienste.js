@@ -57,7 +57,7 @@ http
     q.on('end', () => {
       const body = JSON.parse(b);
       // festhalten, WAS die App an die KI schickt (für die Vertraulichkeits-Prüfung)
-      kiAnfragen.push({ pfad: q.url, schluessel: Object.keys(body), text: body.text, bildZeichen: body.bild ? body.bild.length : 0 });
+      kiAnfragen.push({ pfad: q.url, schluessel: Object.keys(body), text: body.text, frage: body.frage, dokumente: body.dokumente ? body.dokumente.map((d) => d.name) : undefined, pdfKopf: body.dokumente ? Buffer.from(body.dokumente[0].pdf.slice(0, 8), 'base64').toString() : undefined, bildZeichen: body.bild ? body.bild.length : 0 });
       const text = body.text || '';
       const board = { bereich: 'bauleitung', rubrik: /liefer/i.test(text) ? 'Lieferungen' : 'Nachunternehmer', titel: `KI: ${text}`.slice(0, 60), beschreibung: `Ausformulierter Satz zu „${text}“.`, checkpunkte: ['Zuwegung prüfen', 'Lagerfläche definieren'], wochentag: null };
       const jourfixe = { thema: `KI-Thema: ${text}`.slice(0, 60), beschreibung: `Sachlicher Satz zu „${text}“.` };
@@ -67,7 +67,10 @@ http
       else if (q.url === '/v1/jourfixe') r.end(JSON.stringify(jourfixe));
       else if (q.url === '/v1/foto') r.end(JSON.stringify({ gewerk: body.gewerke.includes('Elektro') ? 'Elektro' : body.gewerke[0], art: 'Übersicht' }));
       else if (q.url === '/v1/lieferschein') r.end(JSON.stringify({ lieferant: 'Baustoff Nord GmbH', datum: '2026-11-04', nummer: 'LS-4711', material: 'GK-Platten 12,5 mm', menge: '120 Stück' }));
-      else r.end('{}');
+      else if (q.url === '/v1/frage') {
+        if (/stahltür/i.test(body.frage)) r.end(JSON.stringify({ gefunden: true, antwort: 'In der Halle sind 12 Stahltüren T30 vorgesehen.', quellen: [{ dokument: body.dokumente[0].name, seiteVon: 2, seiteBis: 2, zitat: 'Stahltür T30, Halle: 12 Stück' }] }));
+        else r.end(JSON.stringify({ gefunden: false, antwort: 'Weiß ich nicht – nicht in den Unterlagen gefunden.', quellen: [] }));
+      } else r.end('{}');
     });
   })
   .listen(8788);

@@ -10,7 +10,8 @@
  */
 import { fotoBasisName, fotoOrdner, mitNummer, naechsteNummer, pfadPasst } from '../domain/fotoName';
 import { projektOrdnerName } from '../domain/projekt';
-import { EINSTELLUNGEN_ID, PROJEKT_TYPEN, type BaseRecord, type Foto, type Projekt } from '../domain/types';
+import { EINSTELLUNGEN_ID, PROJEKT_TYPEN, type BaseRecord, type Foto, type Projekt, type Unterlage } from '../domain/types';
+import { istUnterlagenDatei, mimeVon, mitZaehler, sichererDateiname } from '../domain/unterlagen';
 import type { Repo } from '../data/repo';
 import type { RecordStore } from '../data/RecordStore';
 import { APP_ORDNER } from '../ms/config';
@@ -318,7 +319,80 @@ async function syncAblage(l: Lauf, projektId: string, ref: OrdnerRef) {
   }
 }
 
-async function syncProjekt(l: Lauf, projektId: string, ziel: Ziel) {
+/** Ordner der vertraulichen Unterlagen eines Projekts, relativ zu Bauleitung-App. */
+function kernteamPfad(ziel: Ziel): string {
+  return `${KERNTEAM_ORDNER}/${ziel.name}`;
+}
+
+/**
+ * Unterlagen (Pläne, LV, Verträge) liegen getrennt unter _Kernteam – nur im eigenen OneDrive.
+ *  - in der App hinzugefügte Dateien werden nach 01_Unterlagen hochgeladen
+ *  - Dateien, die du direkt in OneDrive in den Ordner legst, erscheinen in der App
+ * Löschen in der App entfernt nur den Eintrag; die Datei bleibt in OneDrive.
+ */
+async function syncUnterlagen(l: Lauf, projektId: string, ziel: Ziel, appRef: OrdnerRef) {
+  if (ziel.driveId !== null) return;
+  const basis = kernteamPfad(ziel);
+  const alle = await l.store.alle<Unterlage>('unterlage', projektId);
+
+  let namen: string[] | null = null;
+  for (const u of alle) {
+    if (u.geloescht || u.oneDrivePfad || !(await l.dateien.existiert(u.datei))) continue;
+    if (!namen) {
+      await l.lw.ordner(appRef, `${basis}/01_Unterlagen`);
+      namen = ((await l.lw.liste(appRef, `${basis}/01_Unterlagen`)) ?? []).map((e) => e.name.toLowerCase());
+    }
+    const bytes = await l.dateien.bytes(u.datei);
+    const wunsch = sichererDateiname(u.name);
+    let pfad: string | null = null;
+    for (let n = 1; n < 30 && !pfad; n++) {
+      const name = mitZaehler(wunsch, n);
+      if (namen.includes(name.toLowerCase())) continue;
+      try {
+        await l.lw.schreibe(appRef, `${basis}/01_Unterlagen/${name}`, bytes, { nurNeu: true, typ: u.mime });
+        pfad = `01_Unterlagen/${name}`;
+        namen.push(name.toLowerCase());
+      } catch (e) {
+        if (!(e instanceof LaufwerkKonflikt)) throw e;
+      }
+    }
+    if (pfad) {
+      const fertig = pfad;
+      await l.repo.aendereAktuell<Unterlage>(u.id, () => ({ oneDrivePfad: fertig }));
+      l.erg.ablage++;
+    }
+  }
+
+  // Dateien entdecken, die direkt in OneDrive abgelegt wurden (auch in Unterordnern)
+  const bekannt = new Set((await l.store.alle<Unterlage>('unterlage', projektId)).map((u) => (u.oneDrivePfad ?? '').toLowerCase()));
+  const durchsuche = async (pfad: string, tiefe: number) => {
+    const liste = await l.lw.liste(appRef, `${basis}/${pfad}`);
+    if (!liste) return;
+    for (const e of liste) {
+      const rel = `${pfad}/${e.name}`;
+      if (e.istOrdner) {
+        if (tiefe < 3 && !e.remote) await durchsuche(rel, tiefe + 1);
+      } else if (istUnterlagenDatei(e.name) && !bekannt.has(rel.toLowerCase())) {
+        await l.repo.neu<Unterlage>('unterlage', projektId, {
+          name: e.name,
+          datei: `unterlage-${e.id}`,
+          mime: mimeVon(e.name),
+          groesse: e.groesse ?? null,
+          art: 'Sonstiges',
+          planNr: '',
+          index: '',
+          notiz: '',
+          oneDrivePfad: rel,
+        });
+        bekannt.add(rel.toLowerCase());
+        l.erg.runter++;
+      }
+    }
+  };
+  await durchsuche('01_Unterlagen', 0);
+}
+
+async function syncProjekt(l: Lauf, projektId: string, ziel: Ziel, appRef: OrdnerRef) {
   const ref: OrdnerRef = { driveId: ziel.driveId, itemId: ziel.itemId };
   let schreibbar = true;
 
@@ -348,6 +422,7 @@ async function syncProjekt(l: Lauf, projektId: string, ziel: Ziel) {
   if (!schreibbar) return;
   try {
     await syncFotos(l, projektId, ref);
+    await syncUnterlagen(l, projektId, ziel, appRef);
     const dirty = (await l.store.ungesynct()).filter((r) => r.projektId === projektId);
     for (const r of dirty) await hoch(l, ref, r);
     await syncAblage(l, projektId, ref);
@@ -459,7 +534,7 @@ export async function abgleichen(ctx: SyncKontext): Promise<SyncErgebnis> {
 
   for (const [projektId, ziel] of ziele) {
     try {
-      await syncProjekt(l, projektId, ziel);
+      await syncProjekt(l, projektId, ziel, appRef);
     } catch (e) {
       if (istAbbruch(e)) throw e;
       erg.fehler.push(`„${ziel.name}“: ${text(e)}`);
@@ -546,5 +621,19 @@ export async function ladeFotoDatei(ctx: SyncKontext, foto: Pick<Foto, 'projektI
   const bytes = await ctx.lw.lies({ driveId: ziel.driveId, itemId: ziel.itemId }, foto.oneDrivePfad);
   if (!bytes) return false;
   await ctx.dateien.schreibe(foto.datei, bytes, 'image/jpeg');
+  return true;
+}
+
+// ---------- Unterlagen bei Bedarf aus OneDrive laden (für die Offline-Ansicht) ----------
+
+export async function ladeUnterlage(ctx: SyncKontext, u: Pick<Unterlage, 'projektId' | 'oneDrivePfad' | 'datei' | 'mime'>): Promise<boolean> {
+  if (!u.projektId || !u.oneDrivePfad) return false;
+  const roh = await ctx.repo.store.holeMeta(M_ZIEL + u.projektId);
+  if (!roh) return false;
+  const ziel = JSON.parse(roh) as Ziel;
+  if (ziel.driveId !== null) return false; // Unterlagen sind nur im eigenen OneDrive (Kernteam) erreichbar
+  const bytes = await ctx.lw.lies(ctx.lw.wurzel(), `${APP_ORDNER}/${kernteamPfad(ziel)}/${u.oneDrivePfad}`);
+  if (!bytes) return false;
+  await ctx.dateien.schreibe(u.datei, bytes, u.mime);
   return true;
 }

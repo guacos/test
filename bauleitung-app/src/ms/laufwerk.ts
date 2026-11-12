@@ -16,6 +16,8 @@ export interface Eintrag {
   name: string;
   eTag: string;
   istOrdner: boolean;
+  /** Größe in Bytes (nur Dateien) */
+  groesse?: number;
   /** Verknüpfung auf einen geteilten Ordner in einem anderen OneDrive */
   remote?: OrdnerRef;
 }
@@ -54,12 +56,13 @@ interface DriveItem {
   id: string;
   name: string;
   eTag?: string;
+  size?: number;
   folder?: object;
   remoteItem?: { id: string; folder?: object; parentReference?: { driveId?: string } };
   parentReference?: { driveId?: string };
 }
 
-const AUSWAHL = '$select=id,name,eTag,folder,file,remoteItem,parentReference';
+const AUSWAHL = '$select=id,name,eTag,size,folder,file,remoteItem,parentReference';
 
 function kodiere(pfad: string): string {
   return pfad
@@ -74,7 +77,7 @@ function zuEintrag(i: DriveItem): Eintrag {
     i.remoteItem?.folder && i.remoteItem.parentReference?.driveId
       ? { driveId: i.remoteItem.parentReference.driveId, itemId: i.remoteItem.id }
       : undefined;
-  return { id: i.id, name: i.name, eTag: i.eTag ?? '', istOrdner: !!i.folder || !!remote, remote };
+  return { id: i.id, name: i.name, eTag: i.eTag ?? '', istOrdner: !!i.folder || !!remote, remote, groesse: i.folder ? undefined : i.size };
 }
 
 /** Freigabe-Link → Kennung für /shares/{id} (laut Microsoft: "u!" + Base64-URL des Links). */

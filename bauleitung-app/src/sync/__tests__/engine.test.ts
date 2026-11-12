@@ -1,8 +1,8 @@
 import { MemoryStore } from '../../data/RecordStore';
 import { Repo } from '../../data/repo';
-import type { BoardEintrag, Foto, Inhalt, Projekt } from '../../domain/types';
+import type { BoardEintrag, Foto, Inhalt, Projekt, Unterlage } from '../../domain/types';
 import { fotoAnlegen } from '../../dienste/fotos';
-import { abgleichen, ablegen, ladeKonflikte, ladeFotoDatei, loeseKonflikt, projektBeitreten, type SyncKontext } from '../engine';
+import { abgleichen, ablegen, ladeKonflikte, ladeFotoDatei, ladeUnterlage, loeseKonflikt, projektBeitreten, type SyncKontext } from '../engine';
 import { TestDateien, TestWolke, type TestLaufwerk } from '../testLaufwerk';
 
 interface Geraet extends SyncKontext {
@@ -311,5 +311,50 @@ describe('Abgleich mit OneDrive', () => {
     expect(handy.lw.ordnerPfade()).toContain('Bauleitung-App/2026-014_Halle Süd');
     expect(handy.lw.ordnerPfade()).not.toContain(P);
     expect(handy.lw.ordnerPfade()).toContain('Bauleitung-App/_Kernteam/2026-014_Halle Süd/01_Unterlagen');
+  });
+
+  it('Unterlagen: Upload nach _Kernteam, Dateien aus OneDrive werden entdeckt, Laden für offline; Kollegen sehen die Dateien nicht', async () => {
+    const wolke = new TestWolke();
+    const handy = geraet(wolke, 'diego', 'Handy');
+    const mac = geraet(wolke, 'diego', 'Mac');
+    const p = await handy.repo.neu<Projekt>('projekt', null, projektDaten);
+    handy.dateien.daten.set('u1', new Uint8Array([37, 80, 68, 70]));
+    const u = await handy.repo.neu<Unterlage>('unterlage', p.id, { name: 'Grundriss: EG.pdf', datei: 'u1', mime: 'application/pdf', groesse: 4, art: 'Plan', planNr: 'A-101', index: 'B', notiz: '', oneDrivePfad: null });
+    await abgleichen(handy);
+    const K = 'Bauleitung-App/_Kernteam/2026-014_Halle Nord/01_Unterlagen';
+    expect(handy.lw.pfade()).toContain(`${K}/Grundriss- EG.pdf`);
+    expect((await handy.repo.hole<Unterlage>(u.id))!.oneDrivePfad).toBe('01_Unterlagen/Grundriss- EG.pdf');
+
+    // Datei direkt in OneDrive abgelegt (z. B. am Mac im Finder), auch im Unterordner
+    await handy.lw.schreibe(handy.lw.wurzel(), `${K}/LV/Leistungsverzeichnis.pdf`, new Uint8Array([1, 2, 3, 4, 5]));
+    await handy.lw.schreibe(handy.lw.wurzel(), `${K}/notizen.txt`, 'x');
+    await abgleichen(mac);
+    const amMac = await mac.repo.alle<Unterlage>('unterlage', p.id);
+    expect(amMac.map((x) => x.name).sort()).toEqual(['Grundriss: EG.pdf', 'Leistungsverzeichnis.pdf']);
+    const lv = amMac.find((x) => x.name === 'Leistungsverzeichnis.pdf')!;
+    expect(lv).toMatchObject({ oneDrivePfad: '01_Unterlagen/LV/Leistungsverzeichnis.pdf', groesse: 5, art: 'Sonstiges' });
+    // kein doppelter Eintrag beim nächsten Abgleich – auch nicht auf dem anderen Gerät
+    await abgleichen(mac);
+    await abgleichen(handy);
+    expect(await handy.repo.alle<Unterlage>('unterlage', p.id)).toHaveLength(2);
+
+    // für die Offline-Ansicht laden
+    expect(await mac.dateien.existiert(lv.datei)).toBe(false);
+    expect(await ladeUnterlage(mac, lv)).toBe(true);
+    expect([...(await mac.dateien.bytes(lv.datei))]).toEqual([1, 2, 3, 4, 5]);
+
+    // Löschen in der App lässt die Datei in OneDrive – und sie taucht nicht wieder auf
+    await mac.repo.loesche((await mac.repo.hole<Unterlage>(lv.id))!);
+    await abgleichen(mac);
+    await abgleichen(mac);
+    expect(mac.lw.pfade()).toContain(`${K}/LV/Leistungsverzeichnis.pdf`);
+    expect(await mac.repo.alle<Unterlage>('unterlage', p.id)).toHaveLength(1);
+
+    // Kollege mit geteiltem Projektordner kommt nicht an die Dateien
+    const kollege = geraet(wolke, 'kollege', 'Kollege');
+    await projektBeitreten(kollege, wolke.teile('diego', P));
+    await abgleichen(kollege);
+    const beimKollegen = (await kollege.repo.alle<Unterlage>('unterlage', p.id))[0];
+    expect(await ladeUnterlage(kollege, beimKollegen)).toBe(false);
   });
 });

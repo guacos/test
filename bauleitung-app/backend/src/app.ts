@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { Anfrage, FotoAnfrage, LieferscheinAnfrage, type Aufgabe } from './fachlich';
+import { Anfrage, FotoAnfrage, FrageAnfrage, LieferscheinAnfrage, type Aufgabe } from './fachlich';
 import { KiFehler, type Ki } from './ki';
 
 export interface Umgebung {
@@ -72,6 +72,12 @@ export function erstelleApp(umgebung: Umgebung, ki: Ki) {
     const body = LieferscheinAnfrage.safeParse(await c.req.json().catch(() => null));
     if (!body.success) return c.json({ fehler: 'Ungültige Anfrage' }, 400);
     return antworte(() => ki.lieferschein(body.data.bild));
+  });
+
+  app.post('/v1/frage', async (c) => {
+    const body = FrageAnfrage.safeParse(await c.req.json().catch(() => null));
+    if (!body.success) return c.json({ fehler: 'Ungültige Anfrage oder Unterlagen zu groß' }, 400);
+    return antworte(() => ki.frage(body.data.frage, body.data.dokumente));
   });
 
   return app;

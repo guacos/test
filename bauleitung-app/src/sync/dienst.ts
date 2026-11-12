@@ -3,7 +3,7 @@
  * dem lokalen Speicher und der Anzeige (Status, Konflikte).
  */
 import { create } from 'zustand';
-import type { BaseRecord, Foto, Projekt } from '../domain/types';
+import type { BaseRecord, Foto, Projekt, Unterlage } from '../domain/types';
 import { bildBytes, existiertDatei, loescheBild, schreibeDatei } from '../foto/dateien';
 import { neueId } from '../lib/id';
 import { abmelden, anmelden, AnmeldeFehler, holeKonto, holeToken, type Konto } from '../ms/auth';
@@ -16,6 +16,7 @@ import {
   ablegen,
   ladeAblage,
   ladeFotoDatei,
+  ladeUnterlage,
   ladeKonflikte,
   loeseKonflikt,
   projektBeitreten,
@@ -231,6 +232,12 @@ export function fotoNachladen(foto: Pick<Foto, 'projektId' | 'oneDrivePfad' | 'd
     nachladen.set(foto.datei, p);
   }
   return p;
+}
+
+/** Lädt eine Unterlage aus OneDrive auf dieses Gerät (für die Offline-Ansicht). */
+export async function unterlageNachladen(u: Pick<Unterlage, 'projektId' | 'oneDrivePfad' | 'datei' | 'mime'>): Promise<boolean> {
+  if (!useSync.getState().konto || !u.oneDrivePfad) return false;
+  return ladeUnterlage(kontext(), u).catch(() => false);
 }
 
 export { AnmeldeFehler };

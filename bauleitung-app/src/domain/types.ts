@@ -19,7 +19,8 @@ export type RecordTyp =
   | 'bautag'
   | 'mangel'
   | 'plan'
-  | 'lieferschein';
+  | 'lieferschein'
+  | 'unterlage';
 
 /** Typen, die je Projekt in OneDrive unter _daten/{typ}/ liegen. */
 export const PROJEKT_TYPEN: RecordTyp[] = [
@@ -33,6 +34,7 @@ export const PROJEKT_TYPEN: RecordTyp[] = [
   'mangel',
   'plan',
   'lieferschein',
+  'unterlage',
 ];
 
 export interface BaseRecord {
@@ -354,4 +356,28 @@ export interface Lieferschein extends BaseRecord {
   /** Verknüpfte geplante Lieferung im Board */
   boardEintragId: string | null;
   ki: KiStatus;
+}
+
+// ---------- Unterlagen (Pläne, LV, Verträge) ----------
+
+export const UNTERLAGEN_ARTEN = ['Plan', 'LV', 'Vertrag', 'Sonstiges'] as const;
+export type UnterlagenArt = (typeof UNTERLAGEN_ARTEN)[number];
+
+export interface Unterlage extends BaseRecord {
+  typ: 'unterlage';
+  /** Dateiname, z. B. "Grundriss EG.pdf" */
+  name: string;
+  /** Schlüssel der lokalen Datei (liegt nur vor, wenn sie auf dieses Gerät geladen wurde) */
+  datei: string;
+  mime: string;
+  /** Größe in Bytes, falls bekannt */
+  groesse: number | null;
+  art: UnterlagenArt;
+  /** Plan-Nr. (frei); Unterlagen mit gleicher Plan-Nr. gelten als verschiedene Stände desselben Plans */
+  planNr: string;
+  /** Planindex, z. B. "C" oder "03" */
+  index: string;
+  notiz: string;
+  /** Pfad in OneDrive relativ zu _Kernteam/{Projekt}/, z. B. "01_Unterlagen/Grundriss EG.pdf" */
+  oneDrivePfad: string | null;
 }

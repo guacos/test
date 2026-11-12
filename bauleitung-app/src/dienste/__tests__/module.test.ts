@@ -20,7 +20,7 @@ async function setup(kiErlaubt = false) {
 const offline = async () => {
   throw new KiNichtVerfuegbar('offline');
 };
-const kiAus: Ki = { erfassung: offline, board: offline, jourfixe: offline, foto: offline, lieferschein: offline };
+const kiAus: Ki = { erfassung: offline, board: offline, jourfixe: offline, foto: offline, lieferschein: offline, frage: offline };
 
 describe('Jour Fixe: Protokolle', () => {
   it('neues Protokoll übernimmt offene Punkte, schließt den alten Entwurf und behält die Punkt-Nr.', async () => {

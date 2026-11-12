@@ -206,6 +206,7 @@ function Ansicht({ protokoll }: { protokoll: Protokoll }) {
               {!gesperrt ? (
                 <Haken
                   text="Erledigt"
+                  ohneStrich
                   wert={pt.status === 'erledigt'}
                   testID={`erledigt-${punktNr(pt)}`}
                   onChange={async (v) => {

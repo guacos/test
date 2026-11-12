@@ -44,6 +44,19 @@ export interface KiLieferschein {
   menge: string;
 }
 
+export interface KiQuelle {
+  dokument: string;
+  seiteVon: number;
+  seiteBis: number;
+  zitat: string;
+}
+
+export interface KiFrageAntwort {
+  gefunden: boolean;
+  antwort: string;
+  quellen: KiQuelle[];
+}
+
 export class KiNichtVerfuegbar extends Error {}
 
 async function rufe<T>(e: KiEinstellungen | null, pfad: string, body: object, timeoutMs = 30_000): Promise<T> {
@@ -77,6 +90,8 @@ export const ki = {
   jourfixe: (e: KiEinstellungen | null, text: string) => rufe<KiJf>(e, '/v1/jourfixe', { text }),
   foto: (e: KiEinstellungen | null, bild: string, gewerke: string[]) => rufe<KiFoto>(e, '/v1/foto', { bild, gewerke }, 60_000),
   lieferschein: (e: KiEinstellungen | null, bild: string) => rufe<KiLieferschein>(e, '/v1/lieferschein', { bild }, 60_000),
+  frage: (e: KiEinstellungen | null, frage: string, dokumente: { name: string; pdf: string }[]) =>
+    rufe<KiFrageAntwort>(e, '/v1/frage', { frage, dokumente }, 300_000),
 };
 
 export type Ki = typeof ki;

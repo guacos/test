@@ -1,5 +1,16 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { AUFGABEN, fotoPruefung, fotoSchema, fotoSystem, LIEFERSCHEIN, type Aufgabe } from './fachlich';
+import {
+  AUFGABEN,
+  FRAGE_SYSTEM,
+  fotoPruefung,
+  fotoSchema,
+  fotoSystem,
+  LIEFERSCHEIN,
+  pruefeFrageAntwort,
+  type Aufgabe,
+  type FrageAntwort,
+  type Quelle,
+} from './fachlich';
 
 /** Modelle, bei denen die serverseitige Ausweichlösung bei Ablehnung ("fallbacks") verfügbar ist. */
 const MIT_FALLBACK = new Set(['claude-opus-5-5', 'claude-opus-5', 'claude-fable-5-1', 'claude-sonnet-5-5']);
@@ -18,6 +29,7 @@ export interface Ki {
   text(aufgabe: Aufgabe, text: string, hatFoto: boolean): Promise<unknown>;
   foto(bild: string, gewerke: string[]): Promise<unknown>;
   lieferschein(bild: string): Promise<unknown>;
+  frage(frage: string, dokumente: { name: string; pdf: string }[]): Promise<FrageAntwort>;
 }
 
 type Inhalt = string | Anthropic.Beta.BetaContentBlockParam[];
@@ -93,5 +105,59 @@ export function erstelleKi(client: Anthropic, modell: string): Ki {
     lieferschein(bild) {
       return frage(LIEFERSCHEIN.system, LIEFERSCHEIN.schema, mitBild(bild, 'Lies diesen Lieferschein.'), LIEFERSCHEIN.pruefung);
     },
+    async frage(text, dokumente) {
+      // Die PDFs werden mit eingeschalteten Fundstellen übergeben: Claude belegt Aussagen mit Dokument und Seite.
+      const inhalt: Anthropic.Beta.BetaContentBlockParam[] = dokumente.map((d, i) => ({
+        type: 'document',
+        source: { type: 'base64', media_type: 'application/pdf', data: d.pdf },
+        title: d.name,
+        citations: { enabled: true },
+        // Folgefragen zu denselben Unterlagen werden günstiger und schneller
+        ...(i === dokumente.length - 1 ? { cache_control: { type: 'ephemeral' as const } } : {}),
+      }));
+      inhalt.push({ type: 'text', text });
+      let antwort: Anthropic.Beta.BetaMessage;
+      try {
+        antwort = await client.beta.messages.create(
+          {
+            model: modell,
+            max_tokens: 8000,
+            system: FRAGE_SYSTEM,
+            messages: [{ role: 'user', content: inhalt }],
+            output_config: { effort: 'medium' },
+            ...(MIT_FALLBACK.has(modell) ? { betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default' as const } : {}),
+          },
+          { timeout: 240_000 },
+        );
+      } catch (e) {
+        if (e instanceof Anthropic.RateLimitError) throw new KiFehler('KI ausgelastet', 503);
+        if (e instanceof Anthropic.AuthenticationError) throw new KiFehler('KI-Schlüssel ungültig', 500);
+        if (e instanceof Anthropic.BadRequestError) throw new KiFehler('Die Unterlagen konnten nicht gelesen werden (zu groß oder kein gültiges PDF).', 413);
+        throw new KiFehler('KI nicht erreichbar', 502);
+      }
+      if (antwort.stop_reason === 'refusal') throw new KiFehler('KI hat die Anfrage abgelehnt', 422);
+      return leseFrageAntwort(antwort.content, dokumente.map((d) => d.name));
+    },
   };
+}
+
+/** Setzt Text und Fundstellen aus der Antwort zusammen. */
+export function leseFrageAntwort(bloecke: Anthropic.Beta.BetaContentBlock[], namen: string[]): FrageAntwort {
+  let text = '';
+  const quellen: Quelle[] = [];
+  for (const b of bloecke) {
+    if (b.type !== 'text') continue;
+    text += b.text;
+    for (const c of b.citations ?? []) {
+      if (c.type !== 'page_location') continue;
+      quellen.push({
+        dokument: c.document_title ?? namen[c.document_index] ?? `Dokument ${c.document_index + 1}`,
+        seiteVon: c.start_page_number,
+        // die API nennt die erste Seite NACH der Fundstelle
+        seiteBis: Math.max(c.start_page_number, c.end_page_number - 1),
+        zitat: c.cited_text.trim().slice(0, 400),
+      });
+    }
+  }
+  return pruefeFrageAntwort(text, quellen);
 }

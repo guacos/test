@@ -129,6 +129,7 @@ function Start() {
           <Modul testID="modul-bautagebuch" icon="notebook-edit" titel="Bautagebuch" pfad="/bautagebuch" />
           <Modul testID="modul-maengel" icon="alert-octagon-outline" titel="Mängel" pfad="/maengel" />
           <Modul testID="modul-lieferscheine" icon="truck-delivery" titel="Lieferscheine" pfad="/lieferscheine" />
+          <Modul testID="modul-unterlagen" icon="file-document-multiple" titel="Unterlagen" pfad="/unterlagen" />
           <Modul testID="modul-firmen" icon="account-hard-hat" titel="Firmen" pfad="/firmen" />
           <Modul testID="modul-suche" icon="magnify" titel="Suche" pfad="/suche" />
         </Raster>

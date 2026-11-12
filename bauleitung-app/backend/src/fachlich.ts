@@ -211,3 +211,53 @@ export const FotoAnfrage = z.object({
 });
 
 export const LieferscheinAnfrage = z.object({ bild: Bild });
+
+// ---------- Fragen an die Unterlagen (Antwort nur mit Quelle) ----------
+
+export const KEINE_ANTWORT = 'Weiß ich nicht – nicht in den Unterlagen gefunden.';
+
+export const FRAGE_SYSTEM =
+  'Du beantwortest Fragen eines Bauleiters AUSSCHLIESSLICH anhand der beigefügten Projektunterlagen (Pläne, Leistungsverzeichnisse, Verträge). ' +
+  'Belege jede Aussage mit einer Fundstelle aus den Unterlagen. ' +
+  `Steht die Antwort nicht eindeutig in den Unterlagen, antworte genau mit dem Satz: "${KEINE_ANTWORT}" ` +
+  'Rate nicht, schätze nicht, rechne nichts hoch und nutze kein Wissen außerhalb der Unterlagen. ' +
+  'Musst du für die Antwort zählen (z. B. Türen in einem Plan), nenne nur dann eine Zahl, wenn sie sich zweifelsfrei aus den Unterlagen ergibt, ' +
+  'und sage dazu, woraus du sie abgeleitet hast. Antworte kurz und sachlich auf Deutsch.';
+
+const Pdf = z
+  .string()
+  .min(100)
+  .regex(/^[A-Za-z0-9+/=]+$/);
+
+export const FrageAnfrage = z
+  .object({
+    frage: z.string().trim().min(3).max(1000),
+    dokumente: z.array(z.object({ name: z.string().trim().min(1).max(200), pdf: Pdf })).min(1).max(20),
+  })
+  // Grenze der Claude-API: 32 MB je Anfrage (Base64 ist ca. ein Drittel größer als die Datei)
+  .refine((a) => a.dokumente.reduce((n, d) => n + d.pdf.length, 0) <= 30_000_000, 'Unterlagen zu groß');
+
+export interface Quelle {
+  dokument: string;
+  seiteVon: number;
+  seiteBis: number;
+  zitat: string;
+}
+
+export interface FrageAntwort {
+  gefunden: boolean;
+  antwort: string;
+  quellen: Quelle[];
+}
+
+/** Ohne Fundstelle gibt es keine Antwort – dann gilt der feste Satz. */
+export function pruefeFrageAntwort(text: string, quellen: Quelle[]): FrageAntwort {
+  const sauber = text.trim();
+  const eindeutig: Quelle[] = [];
+  for (const q of quellen) {
+    if (!eindeutig.some((e) => e.dokument === q.dokument && e.seiteVon === q.seiteVon && e.seiteBis === q.seiteBis)) eindeutig.push(q);
+  }
+  const weissNicht = !sauber || /wei(ß|ss) ich nicht/i.test(sauber.slice(0, 80));
+  if (weissNicht || eindeutig.length === 0) return { gefunden: false, antwort: KEINE_ANTWORT, quellen: [] };
+  return { gefunden: true, antwort: sauber, quellen: eindeutig };
+}

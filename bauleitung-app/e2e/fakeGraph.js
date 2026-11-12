@@ -40,7 +40,10 @@ function erstelleFakeGraph(opt = {}) {
     const i = { id: k.id, name: k.name, eTag: k.eTag, parentReference: { driveId: k.drive, id: k.eltern ? k.eltern.id : undefined } };
     if (k.remote) i.remoteItem = { id: k.remote.itemId, folder: {}, parentReference: { driveId: k.remote.driveId } };
     else if (k.daten === null) i.folder = { childCount: k.kinder.size };
-    else i.file = { mimeType: k.typ || 'application/octet-stream' };
+    else {
+      i.file = { mimeType: k.typ || 'application/octet-stream' };
+      i.size = k.daten.length;
+    }
     return i;
   }
   const fehler = (res, status, code, message) => sende(res, status, { error: { code, message } });

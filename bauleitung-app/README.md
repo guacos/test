@@ -16,12 +16,13 @@ Begleit-App für die Bauleitung (Schlüsselfertigbau/TGA). **Eine** Codebasis f�
 | **Bautagebuch** | je Tag: Wetter (automatisch oder von Hand), Firmen mit Plus/Minus-Zähler, Vorschlag vom letzten Eintrag, Notiz (Diktat), Fotos, PDF |
 | **Mängel** | Foto, Firma, Frist, Ort, Stecknadel im Grundriss, Mängelliste je Firma als PDF |
 | **Lieferscheine** | Foto, Angaben (mit KI: werden gelesen), Kurzprüfung, Verknüpfung mit geplanter Lieferung → im Board „geliefert“ |
+| **Unterlagen** | Pläne, LV, Verträge (PDF/Bild) hinzufügen oder direkt in OneDrive ablegen, offline ansehen, Plan-Nr. und Index (älterer Index = „veraltet“) |
+| **KI-Assistent** | Fragen an die Unterlagen; Antwort nur mit Quelle (Dokument, Seite), sonst „Weiß ich nicht – nicht in den Unterlagen gefunden.“; verwendet nur den aktuellen Planindex |
 | **Firmen** | Nachunternehmer mit Ansprechpartner, Telefon, E-Mail |
 | **Suche** | alle Bereiche, nur auf dem Gerät, auch projektübergreifend |
 | **OneDrive / Team** | Abgleich, Konflikt-Anzeige, geteilte Projekte über OneDrive-Freigaben |
 
-**Noch nicht enthalten** (siehe unten „Offen“): KI-Assistent für Unterlagen, Plan-Viewer,
-Vorlagen Behinderungsanzeige/Bedenkenanmeldung, Nachträge, Abnahmeprotokolle, Wochenbericht.
+**Noch nicht enthalten** (siehe unten „Offen“): Vorlagen Behinderungsanzeige/Bedenkenanmeldung, Nachträge, Abnahmeprotokolle, Wochenbericht.
 
 ---
 
@@ -93,6 +94,7 @@ und Lieferschein-Lesen durch die KI.
 
 **Was an die KI geht** (nur bei „KI erlaubt“): der Kurztext ohne „kw40“/„jf“, bei Fotos und
 Lieferscheinen ein auf 1024 px verkleinertes Bild ohne Aufnahmedaten, dazu die Gewerke-Liste.
+Beim KI-Assistenten gehen die von dir ausgewählten PDFs vollständig an die KI (höchstens 20 MB je Frage).
 **Nicht** übertragen werden Projekt-Nr., Projektname, Bauherr, Adresse. Das Backend speichert
 und protokolliert nichts.
 
@@ -179,6 +181,21 @@ sonst das Wetter von Hand eintragen.
 
 ---
 
+### I. Unterlagen und KI-Assistent
+- **Unterlagen ablegen:** in der App (Mehr → Unterlagen → „Dateien hinzufügen“) oder am Mac direkt in
+  OneDrive in `Bauleitung-App/_Kernteam/{Projekt}/01_Unterlagen` (Unterordner sind erlaubt). Nach dem
+  Abgleich erscheinen sie in der App.
+- **Offline ansehen:** „Alle für offline laden“ antippen, solange du Netz hast. Am Mac wird das PDF im
+  Bildschirm gezeigt. Am Handy öffnet es sich in der PDF-Anzeige des Handys (Zoom, Seitenwahl) –
+  dafür muss eine PDF-App installiert sein (auf Android normalerweise vorhanden).
+- **Aktueller Planindex:** Trage bei Plänen **Plan-Nr.** und **Index** ein. Gleiche Plan-Nr. = derselbe
+  Plan; der höchste Index gilt, ältere werden als „veraltet“ markiert und vom Assistenten nicht benutzt.
+  Die App liest Plan-Nr. und Index **nicht** aus dem Dateinamen – sag mir dein Namensschema, dann baue ich das ein.
+- **Fragen stellen:** nur in Projekten mit „KI erlaubt“ und eingerichtetem KI-Backend (Teil D). Zahlen aus
+  Plänen bitte immer an der genannten Stelle nachprüfen – Zählen in Zeichnungen ist für die KI fehleranfällig.
+- **Team:** Der Ordner `_Kernteam` wird nicht mit dem Projektordner geteilt. Kollegen sehen in der App nur
+  die Dateinamen der Unterlagen, können die Dateien aber nicht öffnen.
+
 ## Ordner in deinem OneDrive
 
 ```
@@ -221,13 +238,13 @@ Die KW-Ordner tragen das Jahr, damit sich Projekte über den Jahreswechsel nicht
 
 ## Was geprüft ist – und was nicht
 
-**Automatisch geprüft (bei jedem `npm test`):** 140 Tests der App (KW-Erkennung inkl.
+**Automatisch geprüft (bei jedem `npm test`):** 145 Tests der App (KW-Erkennung inkl.
 Jahreswechsel, kw/jf/Wochentag, Stichwortzuordnung, Farblogik, Übernahme offener Punkte,
 Foto-KW und Dateinamen, Filter/Suche, Abgleich mit zwei Geräten, Konflikte, Team-Freigaben,
 PDF-Erzeugung, OneDrive- und Outlook-Zugriff gegen einen simulierten Microsoft-Server) und
-12 Tests des KI-Backends.
+16 Tests des KI-Backends.
 
-**In der Oberfläche durchgeklickt (Browser, 52 Schritte, siehe `e2e/`):** alle Abläufe aller
+**In der Oberfläche durchgeklickt (Browser, 61 Schritte, siehe `e2e/`):** alle Abläufe aller
 Bereiche – mit **simuliertem** OneDrive/Outlook, KI- und Wetterdienst.
 
 **Nicht geprüft, weil hier nicht möglich:**
@@ -240,7 +257,6 @@ Bereiche – mit **simuliertem** OneDrive/Outlook, KI- und Wetterdienst.
 Bitte gehe die Kurzfassung oben einmal am Handy durch und melde, was hakt.
 
 ## Offen (noch nicht gebaut)
-- KI-Assistent für Unterlagen (Antwort nur mit Quelle) und Plan-Viewer offline
 - Vorlagen für Behinderungsanzeige (VOB/B § 6) und Bedenkenanmeldung (VOB/B § 4 Abs. 3),
   Nachträge, Abnahmeprotokolle – dafür brauche ich deine Texte/Vorlagen, ich erfinde keine Rechtstexte
 - Wochenbericht per Knopfdruck
@@ -262,6 +278,7 @@ EXPO_PUBLIC_GRAPH_URL=http://localhost:8790/v1.0 EXPO_PUBLIC_TEST_TOKEN=test-die
 EXPO_PUBLIC_WETTER_URL=http://localhost:8791/wetter npx expo export --platform web --output-dir dist-test
 node e2e/fakeDienste.js dist-test &          # App, simulierter Graph, KI, Wetter
 node e2e/teil1.js <bilder-ordner> <ausgabe>  # ebenso teil2.js, teil3.js (Dienste vorher neu starten)
+# teil5.js: Unterlagen und KI-Assistent (braucht drei Test-PDFs im Bilder-Ordner)
 # teil4.js prüft die normale Version (dist): Start ohne Anmeldung, Aufbau der Microsoft-Anmeldung
 ```
 

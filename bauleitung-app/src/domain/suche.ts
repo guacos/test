@@ -31,6 +31,7 @@ export const TYP_NAME: Record<RecordTyp, string> = {
   mangel: 'Mangel',
   plan: 'Grundriss',
   lieferschein: 'Lieferschein',
+  unterlage: 'Unterlage',
 };
 
 /** Kurze, lesbare Bezeichnung eines Datensatzes. */

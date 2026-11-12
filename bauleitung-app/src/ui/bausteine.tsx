@@ -404,12 +404,15 @@ export function Haken({
   onChange,
   testID,
   rechts,
+  ohneStrich,
 }: {
   text: string;
   wert: boolean;
   onChange: (v: boolean) => void;
   testID?: string;
   rechts?: ReactNode;
+  /** angehakten Text nicht durchstreichen (für Auswahllisten) */
+  ohneStrich?: boolean;
 }) {
   return (
     <View style={s.hakenZeile}>
@@ -424,7 +427,7 @@ export function Haken({
         <View style={[s.hakenBox, wert && s.hakenBoxAn]}>
           {wert ? <MaterialCommunityIcons name="check-bold" size={22} color={farbe.weiss} /> : null}
         </View>
-        <Text style={[s.hakenText, wert && s.hakenTextAn]}>{text}</Text>
+        <Text style={[s.hakenText, wert && !ohneStrich && s.hakenTextAn]}>{text}</Text>
       </Pressable>
       {rechts}
     </View>

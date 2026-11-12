@@ -32,6 +32,9 @@ const kiAus: typeof kiTyp = {
   lieferschein: async () => {
     throw new KiNichtVerfuegbar('offline');
   },
+  frage: async () => {
+    throw new KiNichtVerfuegbar('offline');
+  },
 };
 
 describe('Schnellerfassung ohne KI (offline)', () => {
@@ -138,6 +141,7 @@ describe('Schnellerfassung mit KI', () => {
     jourfixe: async () => ({ thema: 'Estrich 1. OG', beschreibung: 'Der Estrich im 1. OG ist noch nicht fertiggestellt.' }),
     foto: async () => ({ gewerk: 'Trockenbau', art: 'Detail' }),
     lieferschein: async () => ({ lieferant: '', datum: '', nummer: '', material: '', menge: '' }),
+    frage: async () => ({ gefunden: false, antwort: '', quellen: [] }),
   };
 
   it('nutzt die KI-Ausformulierung, wenn erlaubt und erreichbar', async () => {

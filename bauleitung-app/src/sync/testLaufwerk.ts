@@ -93,7 +93,7 @@ export class TestLaufwerk implements Laufwerk {
   }
 
   private eintrag(k: Knoten): Eintrag {
-    return { id: k.id, name: k.name, eTag: k.eTag, istOrdner: k.daten === null, remote: k.remote };
+    return { id: k.id, name: k.name, eTag: k.eTag, istOrdner: k.daten === null, remote: k.remote, groesse: k.daten?.length };
   }
 
   async hole(ref: OrdnerRef, pfad: string) {

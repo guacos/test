@@ -17,6 +17,7 @@ export default function MehrScreen() {
         <Zeile icon="notebook-edit" titel="Bautagebuch" untertitel="Wetter, Firmen und Arbeiter, Notizen" onPress={() => router.push('/bautagebuch')} testID="mehr-bautagebuch" />
         <Zeile icon="alert-octagon-outline" titel="Mängel" untertitel="Foto, Pin im Grundriss, Firma, Frist, Mängelliste als PDF" onPress={() => router.push('/maengel')} testID="mehr-maengel" />
         <Zeile icon="truck-delivery" titel="Lieferscheine" untertitel="Fotografieren, prüfen, mit geplanter Lieferung verknüpfen" onPress={() => router.push('/lieferscheine')} testID="mehr-lieferscheine" />
+        <Zeile icon="file-document-multiple" titel="Unterlagen und KI-Assistent" untertitel="Pläne, LV, Verträge offline ansehen; Fragen mit Quellenangabe" onPress={() => router.push('/unterlagen')} testID="mehr-unterlagen" />
         <Zeile icon="account-hard-hat" titel="Firmen" untertitel="Nachunternehmer und Ansprechpartner" onPress={() => router.push('/firmen')} testID="mehr-firmen" />
         <Zeile icon="magnify" titel="Suche" untertitel="Alle Bereiche, auch projektübergreifend" onPress={() => router.push('/suche')} testID="mehr-suche" />
       </Abschnitt>
