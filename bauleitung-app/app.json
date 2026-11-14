@@ -1,0 +1,67 @@
+{
+  "expo": {
+    "name": "Bauleitung",
+    "slug": "bauleitung-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#0B2540",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "package": "de.bauleitung.app",
+      "blockedPermissions": [
+        "android.permission.ACCESS_BACKGROUND_LOCATION",
+        "android.permission.FOREGROUND_SERVICE_LOCATION"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "output": "single",
+      "bundler": "metro",
+      "name": "Bauleitung",
+      "lang": "de"
+    },
+    "scheme": "bauleitung",
+    "plugins": [
+      "expo-router",
+      "expo-sqlite",
+      "expo-secure-store",
+      "expo-web-browser",
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Die App nutzt die Kamera für Baustellenfotos.",
+          "photosPermission": "Die App liest Fotos aus deiner Galerie für die Fotodokumentation."
+        }
+      ],
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Das Mikrofon wird für das Diktat genutzt. Die Erkennung läuft auf dem Gerät.",
+          "speechRecognitionPermission": "Für das Diktat wird die Spracherkennung genutzt."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Der Standort wird nur verwendet, um die Koordinaten der Baustelle für das Wetter im Bautagebuch zu übernehmen."
+        }
+      ]
+    ],
+    "description": "Begleit-App für die Bauleitung: Board, Fotos, Jour Fixe, Bautagebuch, Mängel, Lieferscheine",
+    "splash": {
+      "backgroundColor": "#0B2540",
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain"
+    }
+  }
+}
