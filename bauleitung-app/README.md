@@ -26,6 +26,8 @@ Begleit-App für die Bauleitung (Schlüsselfertigbau/TGA). **Eine** Codebasis f�
 
 ---
 
+> **Noch nie so etwas gemacht?** Fang mit der einfachen Schritt-für-Schritt-Anleitung in [INSTALLATION.md](INSTALLATION.md) an.
+
 ## Was du selbst erledigen musst
 
 Reihenfolge: **A → B** reicht, um die App am Handy offline zu nutzen. **E** brauchst du für
